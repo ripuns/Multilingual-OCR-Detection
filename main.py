@@ -6,6 +6,8 @@ from detection.east_detector import EASTDetector
 from grouping.text_grouping import group_text
 from classification.classifier import TextClassifier
 from recognition.trocr_recognizer import TrOCRRecognizer
+from transformers import logging
+logging.set_verbosity_error()
 
 def run_pipeline(image_path):
     detector = EASTDetector()
@@ -16,11 +18,28 @@ def run_pipeline(image_path):
     sentence_boxes = group_text(boxes)
 
     os.makedirs("output/cropped", exist_ok=True)
+    print("Word boxes: ", len(sentence_boxes))
 
     results = []
 
     for i, (x1, y1, x2, y2) in enumerate(sentence_boxes):
+
+        h, w = image.shape[:2]
+        x1 = max(0, x1)
+        y1 = max(0, y1)
+        x2 = min(w, x2)
+        y2 = min(h, y2)
+
         crop = image[y1:y2, x1:x2]
+
+        if image is None:
+            raise ValueError("Image not loaded properly")
+        
+        if x1<=x2 or y2<=y1:
+            continue
+
+        if crop is None or crop.size == 0:
+            continue
 
         pil_img = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
 
@@ -39,4 +58,5 @@ def run_pipeline(image_path):
 
 
 if __name__ == "__main__":
-    run_pipeline("input/images/sample.jpg")
+    run_pipeline("input/images/sample.png")
+    

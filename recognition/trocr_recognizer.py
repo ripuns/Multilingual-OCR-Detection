@@ -9,11 +9,11 @@ class TrOCRRecognizer:
         self.models = {
             "printed": self.load_model("microsoft/trocr-large-printed"),
             "handwritten": self.load_model("microsoft/trocr-large-handwritten"),
-            "chinese": self.load_model("ZihCiLin/trocr-traditional-chinese-baseline")
+            # "chinese": self.load_model("ZihCiLin/trocr-traditional-chinese-baseline")
         }
 
     def load_model(self, name):
-        processor = TrOCRProcessor.from_pretrained(name)
+        processor = TrOCRProcessor.from_pretrained(name, use_fast=False)
         model = VisionEncoderDecoderModel.from_pretrained(name).to(self.device)
         return processor, model
 
