@@ -19,7 +19,8 @@ class TrOCRRecognizer:
 
     def recognize(self, image, label):
         processor, model = self.models[label]
-
+        image = image.resize((384, 384))
+        
         pixel_values = processor(images=image, return_tensors="pt").pixel_values.to(self.device)
         generated_ids = model.generate(pixel_values)
 

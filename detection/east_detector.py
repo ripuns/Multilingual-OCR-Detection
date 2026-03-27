@@ -15,7 +15,8 @@ class EASTDetector:
         orig = image.copy()
         (H, W) = image.shape[:2]
 
-        newW, newH = (W // 32) * 32, (H // 32) * 32
+        newW = max(320,(W // 32) * 32)
+        newH = max(320,(H // 32) * 32)
         rW, rH = W / float(newW), H / float(newH)
 
         image = cv2.resize(image, (newW, newH))
@@ -46,7 +47,7 @@ class EASTDetector:
 
         return results, orig
 
-    def decode(self, scores, geometry, min_confidence=0.5):
+    def decode(self, scores, geometry, min_confidence=0.3):
         (numRows, numCols) = scores.shape[2:4]
         rects = []
         confidences = []

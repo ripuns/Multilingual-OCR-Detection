@@ -18,7 +18,6 @@ def run_pipeline(image_path):
     sentence_boxes = group_text(boxes)
 
     os.makedirs("output/cropped", exist_ok=True)
-    print("Word boxes: ", len(sentence_boxes))
 
     results = []
 
@@ -32,14 +31,12 @@ def run_pipeline(image_path):
 
         crop = image[y1:y2, x1:x2]
 
-        if image is None:
-            raise ValueError("Image not loaded properly")
+        if crop is None:
+            continue
         
-        if x1<=x2 or y2<=y1:
+        if x2<=x1 or y2<=y1:
             continue
 
-        if crop is None or crop.size == 0:
-            continue
 
         pil_img = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
 

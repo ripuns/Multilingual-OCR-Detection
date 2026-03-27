@@ -8,7 +8,7 @@ class TextClassifier:
 
         if np.std(arr) > 70:
             return "handwritten"
-        elif np.mean(arr) < 150:
-            return "chinese"
+        # elif np.mean(arr) < 150:
+        #     return "chinese"
         else:
             return "printed"
