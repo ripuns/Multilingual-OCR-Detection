@@ -12,6 +12,11 @@ class EASTDetector:
 
     def detect_text(self, image_path):
         image = cv2.imread(image_path)
+        if image is None:
+            raise FileNotFoundError(
+                f"Unable to read input image: {image_path}. "
+                "Check that the path exists and the file is a supported image."
+            )
         orig = image.copy()
         (H, W) = image.shape[:2]
 
