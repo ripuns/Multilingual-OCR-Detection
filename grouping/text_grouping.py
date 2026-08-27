@@ -14,6 +14,8 @@ def group_text(boxes):
         x1, y1, x2, y2 = box
 
         if abs(y1 - current[1]) < v_tol and (x1 - current[2]) < h_gap:
+            current[0] = min(current[0], x1)
+            current[1] = min(current[1], y1)
             current[2] = max(current[2], x2)
             current[3] = max(current[3], y2)
         else:
@@ -21,4 +23,6 @@ def group_text(boxes):
             current = list(box)
 
     grouped.append(tuple(current))
+
+    grouped.sort(key=lambda b: (b[1], b[0]))
     return grouped
