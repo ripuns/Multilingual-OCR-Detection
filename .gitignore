@@ -1,7 +1,7 @@
 ocr_env
 *.pb
 cropped
+__pycache__/
 *.pyc
-project_audit.md
-implementation_plan.md
+docs/
 experiments
