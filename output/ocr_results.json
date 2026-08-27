@@ -1,0 +1,386 @@
+[
+  {
+    "index": 0,
+    "bbox": [
+      455,
+      0,
+      521,
+      13
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "THEVA"
+  },
+  {
+    "index": 1,
+    "bbox": [
+      331,
+      0,
+      656,
+      17
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "JUSTLY WAY THEY ARE SUITABLE."
+  },
+  {
+    "index": 2,
+    "bbox": [
+      113,
+      15,
+      366,
+      45
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "FACTORY SAFETY SYSTEM"
+  },
+  {
+    "index": 3,
+    "bbox": [
+      369,
+      22,
+      840,
+      51
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "USES THE FOLLOWING COMPONENTS CONNECTED"
+  },
+  {
+    "index": 4,
+    "bbox": [
+      844,
+      29,
+      965,
+      53
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "TO AN 8051"
+  },
+  {
+    "index": 5,
+    "bbox": [
+      91,
+      42,
+      251,
+      64
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "MICROCONTROLLE"
+  },
+  {
+    "index": 6,
+    "bbox": [
+      165,
+      75,
+      777,
+      112
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "SMOKE SENSOR CONNECTED TO EXTERNAL INTERRUPT 0 ("
+  },
+  {
+    "index": 7,
+    "bbox": [
+      179,
+      104,
+      685,
+      138
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "EMERGENCY PUSH BUTTON CONNECTED TO EXTERNAL"
+  },
+  {
+    "index": 8,
+    "bbox": [
+      556,
+      116,
+      591,
+      138
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "TO"
+  },
+  {
+    "index": 9,
+    "bbox": [
+      688,
+      117,
+      881,
+      143
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "INTERRUPT 1 (INT1)"
+  },
+  {
+    "index": 10,
+    "bbox": [
+      181,
+      135,
+      376,
+      164
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "BUZZER CONNECTED"
+  },
+  {
+    "index": 11,
+    "bbox": [
+      371,
+      140,
+      505,
+      166
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "ITO PORT P2"
+  },
+  {
+    "index": 12,
+    "bbox": [
+      178,
+      162,
+      457,
+      194
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "LED INDICATOR CONNECTED"
+  },
+  {
+    "index": 13,
+    "bbox": [
+      449,
+      174,
+      568,
+      199
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "TO PORT P1"
+  },
+  {
+    "index": 14,
+    "bbox": [
+      90,
+      193,
+      158,
+      217
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "WRITE"
+  },
+  {
+    "index": 15,
+    "bbox": [
+      158,
+      195,
+      464,
+      228
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "AN 8051 ASSEMBLY PROGRAM"
+  },
+  {
+    "index": 16,
+    "bbox": [
+      465,
+      204,
+      746,
+      231
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "USING INTERRUPTS SUCH THAT"
+  },
+  {
+    "index": 17,
+    "bbox": [
+      181,
+      225,
+      325,
+      252
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "WHEN SMOKE"
+  },
+  {
+    "index": 18,
+    "bbox": [
+      322,
+      230,
+      514,
+      255
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "IS DETECTED, INTO"
+  },
+  {
+    "index": 19,
+    "bbox": [
+      651,
+      233,
+      693,
+      258
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "THE"
+  },
+  {
+    "index": 20,
+    "bbox": [
+      521,
+      235,
+      846,
+      260
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "TRIGGERS AND THE BUZZER SOUNDS"
+  },
+  {
+    "index": 21,
+    "bbox": [
+      177,
+      256,
+      323,
+      279
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "CONTINUOUSLV"
+  },
+  {
+    "index": 22,
+    "bbox": [
+      184,
+      286,
+      293,
+      309
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "WHEN THE"
+  },
+  {
+    "index": 23,
+    "bbox": [
+      285,
+      289,
+      494,
+      317
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "EMERGENCY BUTTON"
+  },
+  {
+    "index": 24,
+    "bbox": [
+      519,
+      293,
+      668,
+      317
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "PRESSED, INT1"
+  },
+  {
+    "index": 25,
+    "bbox": [
+      689,
+      295,
+      960,
+      319
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "PIGGERS AND THE LED BLINKS"
+  },
+  {
+    "index": 26,
+    "bbox": [
+      178,
+      315,
+      267,
+      340
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "RAPIDLY."
+  },
+  {
+    "index": 27,
+    "bbox": [
+      90,
+      342,
+      569,
+      378
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "CONFIGURE THE INTERRUPT ENABLE AND PRIORITY"
+  },
+  {
+    "index": 28,
+    "bbox": [
+      576,
+      351,
+      787,
+      379
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "REGISTERS SO THAT THE"
+  },
+  {
+    "index": 29,
+    "bbox": [
+      670,
+      353,
+      968,
+      377
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "SO THAT THE SMOKE ALARM HAS"
+  },
+  {
+    "index": 30,
+    "bbox": [
+      93,
+      374,
+      360,
+      402
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "HIGHER PRIORITY THAN THE"
+  },
+  {
+    "index": 31,
+    "bbox": [
+      363,
+      380,
+      572,
+      407
+    ],
+    "label": "printed",
+    "route": "microsoft/trocr-large-printed",
+    "text": "EMERGENCY BUTTON."
+  }
+]
