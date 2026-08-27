@@ -2,3 +2,6 @@ ocr_env
 *.pb
 cropped
 *.pyc
+project_audit.md
+implementation_plan.md
+experiments
