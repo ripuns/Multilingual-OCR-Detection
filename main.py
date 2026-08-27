@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 import os
 import sys
@@ -6,6 +7,7 @@ import sys
 import cv2
 from PIL import Image
 
+from boxes import clamp_box
 from config import load_config
 from detection.east_detector import EASTDetector
 from grouping.text_grouping import group_text
@@ -56,32 +58,39 @@ def run_pipeline(image_path, output_dir, config):
     results = []
     h, w = image.shape[:2]
 
-    for i, (x1, y1, x2, y2) in enumerate(sentence_boxes):
-        x1 = max(0, x1)
-        y1 = max(0, y1)
-        x2 = min(w, x2)
-        y2 = min(h, y2)
-
-        if x2 <= x1 or y2 <= y1:
+    for i, box in enumerate(sentence_boxes):
+        clamped = clamp_box(*box, width=w, height=h)
+        if clamped is None:
             continue
+        x1, y1, x2, y2 = clamped
 
         crop = image[y1:y2, x1:x2]
 
         pil_img = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
 
         label = classifier.classify(pil_img)
-        text = recognizer.recognize(pil_img, label)
+        text, route = recognizer.recognize(pil_img, label)
 
-        results.append(text)
+        results.append({
+            "index": i,
+            "bbox": [x1, y1, x2, y2],
+            "label": label,
+            "route": route,
+            "text": text,
+        })
 
         cv2.imwrite(os.path.join(cropped_dir, f"{i}.png"), crop)
 
         logger.info("[%d] %s -> %s", i, label, text)
 
-    results_path = os.path.join(output_dir, "ocr_results.txt")
-    with open(results_path, "w", encoding="utf-8") as f:
-        for line in results:
-            f.write(line + "\n")
+    txt_path = os.path.join(output_dir, "ocr_results.txt")
+    with open(txt_path, "w", encoding="utf-8") as f:
+        for r in results:
+            f.write(r["text"] + "\n")
+
+    json_path = os.path.join(output_dir, "ocr_results.json")
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(results, f, ensure_ascii=False, indent=2)
 
 
 if __name__ == "__main__":
