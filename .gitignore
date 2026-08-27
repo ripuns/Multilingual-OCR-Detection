@@ -1,3 +1,4 @@
 ocr_env
 *.pb
 cropped
+*.pyc
