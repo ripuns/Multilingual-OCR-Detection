@@ -1,12 +1,13 @@
-numpy
-opencv-python
-imutils
-pillow
-torch
-torchvision
-torchaudio
-transformers
-accelerate
-tqdm
-matplotlib
-scikit-image
+numpy==2.4.3
+opencv-python==4.13.0.92
+imutils==0.5.4
+pillow==12.1.1
+torch==2.11.0
+torchvision==0.26.0
+torchaudio==2.11.0
+transformers==4.38.2
+accelerate==1.13.0
+tqdm==4.67.3
+
+# dev-only, needed to run tests/
+pytest==9.1.1
