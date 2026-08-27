@@ -4,11 +4,13 @@ import os
 from imutils.object_detection import non_max_suppression
 
 class EASTDetector:
-    def __init__(self):
+    def __init__(self, min_confidence=0.3, nms_overlap_thresh=0.3):
         base_dir = os.path.dirname(os.path.abspath(__file__))
         model_path = os.path.join(base_dir, "..", "models", "frozen_east_text_detection.pb")
 
         self.net = cv2.dnn.readNet(model_path)
+        self.min_confidence = min_confidence
+        self.nms_overlap_thresh = nms_overlap_thresh
 
     def detect_text(self, image_path):
         image = cv2.imread(image_path)
@@ -37,9 +39,9 @@ class EASTDetector:
             "feature_fusion/concat_3"
         ])
 
-        rects, confidences = self.decode(scores, geometry)
+        rects, confidences = self.decode(scores, geometry, self.min_confidence)
 
-        boxes = non_max_suppression(np.array(rects), probs=confidences)
+        boxes = non_max_suppression(np.array(rects), probs=confidences, overlapThresh=self.nms_overlap_thresh)
 
         results = []
         for (startX, startY, endX, endY) in boxes:
