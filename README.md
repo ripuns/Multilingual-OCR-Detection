@@ -129,6 +129,13 @@ Default input:
 
 input/images/sample.png  
 
+Optional flags:
+
+python main.py --input path/to/image.png --output-dir path/to/output  
+
+- `--input` — path to the input image (default: `input/images/sample.png`)
+- `--output-dir` — directory for cropped regions and results (default: `output`)
+
 ---
 
 ## Output
