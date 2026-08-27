@@ -1,4 +1,4 @@
-def group_text(boxes):
+def group_text(boxes, v_tol_multiplier=0.5, h_gap_multiplier=1.5):
     if not boxes:
         return []
 
@@ -7,8 +7,8 @@ def group_text(boxes):
     current = list(boxes[0])
 
     avg_height = sum([b[3] - b[1] for b in boxes]) / len(boxes)
-    v_tol = avg_height * 0.5
-    h_gap = avg_height * 1.5
+    v_tol = avg_height * v_tol_multiplier
+    h_gap = avg_height * h_gap_multiplier
 
     for box in boxes[1:]:
         x1, y1, x2, y2 = box
