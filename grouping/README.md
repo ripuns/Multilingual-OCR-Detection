@@ -10,12 +10,16 @@ coherent lines/phrases than isolated words, so boxes on the same line need to
 be merged into a single crop region before recognition.
 
 ## How
-`group_text(boxes)` in [`text_grouping.py`](text_grouping.py):
+`group_text(boxes, v_tol_multiplier=0.5, h_gap_multiplier=1.5)` in
+[`text_grouping.py`](text_grouping.py):
 1. Sorts input boxes by `y1` (top edge) ascending.
 2. Walks the sorted boxes, accumulating each into the current group if it is
-   within a vertical tolerance (`0.5 * average box height`) of the group's
-   top edge and within a horizontal gap tolerance (`1.5 * average box
-   height`) of the group's right edge.
+   within a vertical tolerance (`v_tol_multiplier * average box height`) of
+   the group's top edge and within a horizontal gap tolerance
+   (`h_gap_multiplier * average box height`) of the group's right edge. The
+   multipliers default to the original hardcoded values and are driven by
+   `config.yaml`'s `grouping.*` keys in `main.py` — see root README's
+   Configuration section.
 3. While a box is absorbed into a group, the group's bounding rectangle is
    expanded to `x1=min(...), y1=min(...), x2=max(...), y2=max(...)` across
    every box in that group — not just the first box — so the crop taken from

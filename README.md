@@ -67,6 +67,8 @@ Input Image
 ocr_project/
 
 ├── main.py  
+├── config.py  
+├── config.yaml  
 ├── detection/  
 │   └── east_detector.py  
 ├── grouping/  
@@ -81,6 +83,7 @@ ocr_project/
 ├── output/  
 │   ├── cropped/  
 │   └── ocr_results.txt  
+├── tests/  
 
 ---
 
@@ -105,7 +108,10 @@ source ocr_env/bin/activate
 
 ### 3. Install dependencies
 
-pip install numpy opencv-python imutils pillow torch torchvision torchaudio transformers accelerate tqdm  
+pip install -r requirements.txt  
+
+Versions are pinned in `requirements.txt` for reproducibility (includes `pytest`,
+needed to run `tests/`).
 
 ---
 
@@ -131,10 +137,37 @@ input/images/sample.png
 
 Optional flags:
 
-python main.py --input path/to/image.png --output-dir path/to/output  
+python main.py --input path/to/image.png --output-dir path/to/output --config path/to/config.yaml  
 
-- `--input` — path to the input image (default: `input/images/sample.png`)
-- `--output-dir` — directory for cropped regions and results (default: `output`)
+- `--input` — path to the input image (overrides `config.yaml`'s `paths.input`)
+- `--output-dir` — directory for cropped regions and results (overrides `config.yaml`'s `paths.output_dir`)
+- `--config` — path to the config file (default: `config.yaml`)
+
+---
+
+## Configuration
+
+Runtime settings live in `config.yaml` at the repo root (loaded by `config.py`;
+missing keys fall back to built-in defaults, missing file falls back entirely
+to defaults):
+
+```yaml
+detection:
+  min_confidence: 0.3       # EAST score threshold
+  nms_overlap_thresh: 0.3   # EAST non-max-suppression overlap threshold
+grouping:
+  v_tol_multiplier: 0.5     # vertical tolerance, x average box height
+  h_gap_multiplier: 1.5     # horizontal gap tolerance, x average box height
+device: auto                 # auto | cpu | cuda
+paths:
+  input: input/images/sample.png
+  output_dir: output
+logging:
+  level: INFO
+```
+
+`--input`/`--output-dir` CLI flags take priority over `config.yaml` when both
+are given.
 
 ---
 
