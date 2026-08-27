@@ -14,13 +14,22 @@ Run from the repository root with the project's virtual environment:
 ocr_env/Scripts/python -m pytest tests/ -v
 ```
 
-(`pytest` must be installed in `ocr_env` — it is a dev-only dependency, not
-yet listed in `requirements.txt`.)
+(`pytest` is listed in `requirements.txt` as a dev-only dependency.)
 
 ## Structure
 - `test_grouping.py` — unit/regression/adversarial tests for
   [`../grouping/text_grouping.py`](../grouping/text_grouping.py), including
   the min/max bounding-box bug fix.
+- `test_boxes.py` — unit tests for
+  [`../boxes.py`](../boxes.py)'s `clamp_box()` (clamping and invalid/empty-box
+  rejection).
+- `test_registry.py` — unit tests for
+  [`../recognition/registry.py`](../recognition/registry.py) (route
+  register/lookup, miss behavior, default routes).
+- `test_east_detector.py` — failure-path test for
+  [`../detection/east_detector.py`](../detection/east_detector.py) (missing
+  image raises `FileNotFoundError`); constructs the detector via
+  `__new__` to skip loading the EAST model file.
 
 ## Summary
 Grows incrementally alongside each fix/feature per the project's atomic

@@ -21,7 +21,10 @@ without the recognizer hardcoding that mapping.
   -> `microsoft/trocr-large-handwritten`) at import time, then loads a
   route's processor/model **lazily** on first use of that label
   (`recognize(image, label)`), caching it for subsequent calls. Only the
-  routes actually exercised in a run get loaded into memory.
+  routes actually exercised in a run get loaded into memory. `recognize()`
+  returns `(text, route)`, where `route` is the model id the label resolved
+  to — this is what `main.py` writes into `output/ocr_results.json`'s
+  `route` field for traceability.
 
 ## Structure
 - `registry.py` — `register()` / `get_route()` / `registered_routes()`.

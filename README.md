@@ -174,7 +174,10 @@ are given.
 ## Output
 
 - Cropped text regions: output/cropped/  
-- Recognized text: output/ocr_results.txt  
+- Recognized text (plain): output/ocr_results.txt  
+- Recognized text (structured): output/ocr_results.json — one entry per
+  region: `index`, `bbox` (`[x1, y1, x2, y2]`), `label`, `route` (the
+  resolved model id), `text`.
 
 ---
 
