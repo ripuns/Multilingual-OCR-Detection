@@ -6,6 +6,7 @@ import sys
 import cv2
 from PIL import Image
 
+from config import load_config
 from detection.east_detector import EASTDetector
 from grouping.text_grouping import group_text
 from classification.classifier import TextClassifier
@@ -19,26 +20,35 @@ logger = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Multilingual OCR pipeline")
-    parser.add_argument("--input", default="input/images/sample.png", help="Path to the input image")
-    parser.add_argument("--output-dir", default="output", help="Directory for cropped images and results")
+    parser.add_argument("--config", default="config.yaml", help="Path to the config YAML file")
+    parser.add_argument("--input", default=None, help="Path to the input image (overrides config)")
+    parser.add_argument("--output-dir", default=None, help="Directory for cropped images and results (overrides config)")
     return parser.parse_args()
 
 
-def configure_logging():
+def configure_logging(level_name):
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     except AttributeError:
         pass
-    logging.basicConfig(level=logging.INFO, format="%(message)s")
+    level = getattr(logging, str(level_name).upper(), logging.INFO)
+    logging.basicConfig(level=level, format="%(message)s")
 
 
-def run_pipeline(image_path, output_dir):
-    detector = EASTDetector()
+def run_pipeline(image_path, output_dir, config):
+    detector = EASTDetector(
+        min_confidence=config["detection"]["min_confidence"],
+        nms_overlap_thresh=config["detection"]["nms_overlap_thresh"],
+    )
     classifier = TextClassifier()
-    recognizer = TrOCRRecognizer()
+    recognizer = TrOCRRecognizer(device=config["device"])
 
     boxes, image = detector.detect_text(image_path)
-    sentence_boxes = group_text(boxes)
+    sentence_boxes = group_text(
+        boxes,
+        v_tol_multiplier=config["grouping"]["v_tol_multiplier"],
+        h_gap_multiplier=config["grouping"]["h_gap_multiplier"],
+    )
 
     cropped_dir = os.path.join(output_dir, "cropped")
     os.makedirs(cropped_dir, exist_ok=True)
@@ -75,6 +85,12 @@ def run_pipeline(image_path, output_dir):
 
 
 if __name__ == "__main__":
-    configure_logging()
     args = parse_args()
-    run_pipeline(args.input, args.output_dir)
+    config = load_config(args.config)
+
+    configure_logging(config["logging"]["level"])
+
+    image_path = args.input or config["paths"]["input"]
+    output_dir = args.output_dir or config["paths"]["output_dir"]
+
+    run_pipeline(image_path, output_dir, config)
