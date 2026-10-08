@@ -35,3 +35,10 @@ def test_tamil_route_registered_on_import():
 
     assert "tamil" in registry.registered_routes()
     assert "ocr_tamil" in registry.get_route("tamil")
+
+
+def test_hindi_route_registered_on_import():
+    import recognition.easyocr_hindi_recognizer  # noqa: F401 -- side effect: registers "hindi"
+
+    assert "hindi" in registry.registered_routes()
+    assert "easyocr" in registry.get_route("hindi")

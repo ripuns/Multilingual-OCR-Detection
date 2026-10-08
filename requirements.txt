@@ -10,6 +10,7 @@ accelerate==1.13.0
 tqdm==4.67.3
 PyYAML==6.0.3
 ocr_tamil==0.4.1
+easyocr==1.7.2
 
 # dev-only, needed to run tests/
 pytest==9.1.1

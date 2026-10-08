@@ -6,15 +6,22 @@ A modular Optical Character Recognition (OCR) pipeline that detects, groups, cla
 
 ## Overview
 
-This project implements an end-to-end OCR system that:
+This project implements an end-to-end OCR system supporting three languages/scripts, selected per run with `--script`:
 
-- Detects text regions using the EAST text detector  
-- Groups word-level detections into sentence-level regions  
-- Classifies text type (printed / handwritten) for the English path  
-- Routes inputs dynamically using a registry-backed multiplexer  
-- Recognizes English text via TrOCR, and Tamil text via a separate `ocr_tamil`-backed route, selected per run with `--script`  
+- **English** — EAST detection, heuristic printed/handwritten classification, TrOCR recognition
+- **Tamil** — EAST detection, `ocr_tamil` (CRAFT+PARSEQ) recognition
+- **Hindi** — EasyOCR's own detection + recognition (EAST produces zero detections for Devanagari — see below)
 
-The system is designed as a modular pipeline and reflects concepts from multiplexed OCR architectures. Tamil support is a small, pilot-scale addition — see `docs/limitations.md` and `docs/research_contribution.md` before relying on its accuracy.
+All three are pilot-scale additions on top of the original English pipeline —
+see `docs/limitations.md` and `docs/research_contribution.md` before relying on
+Tamil/Hindi accuracy. The actual contribution of this project is not "it
+supports 3 languages" by itself, but what extending it to 3 languages revealed:
+**a measured severity gradient in how a modular pipeline's detector fails when
+applied to a script it wasn't built for** — English had a recoverable grouping
+bug (now fixed), Tamil's detector produces boxes that are systematically
+under-sized (CER 46.3% on a small pilot), and Hindi's detector (EAST) produces
+*no boxes at all*, requiring a full detection-backend swap (after which CER
+drops to 7.1%). Full writeup in `docs/research_contribution.md`.
 
 ---
 
@@ -78,7 +85,8 @@ ocr_project/
 ├── recognition/  
 │   ├── registry.py  
 │   ├── trocr_recognizer.py  
-│   └── ocr_tamil_recognizer.py  
+│   ├── ocr_tamil_recognizer.py  
+│   └── easyocr_hindi_recognizer.py  
 ├── models/  
 │   └── frozen_east_text_detection.pb  
 ├── input/images/  
@@ -144,8 +152,8 @@ python main.py --input path/to/image.png --output-dir path/to/output --config pa
 - `--input` — path to the input image (overrides `config.yaml`'s `paths.input`)
 - `--output-dir` — directory for cropped regions and results (overrides `config.yaml`'s `paths.output_dir`)
 - `--config` — path to the config file (default: `config.yaml`)
-- `--script` — `english` (default) or `tamil`. This is an explicit choice per run,
-  not automatic script detection — see `docs/limitations.md`.
+- `--script` — `english` (default), `tamil`, or `hindi`. This is an explicit
+  choice per run, not automatic script detection — see `docs/limitations.md`.
 
 ---
 
@@ -163,7 +171,7 @@ grouping:
   v_tol_multiplier: 0.5     # vertical tolerance, x average box height
   h_gap_multiplier: 1.5     # horizontal gap tolerance, x average box height
 device: auto                 # auto | cpu | cuda
-script: english               # english | tamil
+script: english               # english | tamil | hindi
 paths:
   input: input/images/sample.png
   output_dir: output
@@ -211,8 +219,11 @@ This project reflects a simplified implementation of multiplexed OCR systems:
 - Heuristic classifier (not learned), English path only
 - No rotation handling
 - No automatic script detection — `--script` is an explicit per-run choice
-- Tamil route is a small (n=5), synthetic pilot — see `docs/limitations.md` and
-  `docs/research_contribution.md` for the measured accuracy and its caveats
+- Tamil and Hindi routes are small (n=5), synthetic pilots — see
+  `docs/limitations.md` and `docs/research_contribution.md` for the measured
+  accuracy and its caveats
+- Hindi uses a different detector (EasyOCR) than English/Tamil (EAST) — not
+  directly comparable as "the same pipeline, different language"
 - Performance drops on very small text regions
 
 ---
@@ -221,10 +232,11 @@ This project reflects a simplified implementation of multiplexed OCR systems:
 
 - Replace classifier with CNN or CLIP-based model
 - Automatic script detection (currently manual via `--script`)
-- Larger, real (non-synthetic) Tamil evaluation set; investigate whether EAST's
-  Latin-script training is the cause of the Tamil pilot's clipping pattern
-  (see `docs/research_contribution.md`)
-- Additional scripts/languages beyond English and Tamil
+- Larger, real (non-synthetic) evaluation sets for Tamil and Hindi; isolate
+  why EAST produces zero detections for Devanagari specifically (font
+  rendering artifact vs. a more fundamental mismatch — see
+  `docs/research_contribution.md`)
+- Additional scripts/languages beyond English, Tamil, and Hindi
 - Improve grouping with clustering algorithms
 - Handle rotated and curved text
 - Deploy as API (FastAPI)
@@ -252,6 +264,7 @@ IT Engineering, VIT Vellore
 - PyTorch  
 - Microsoft TrOCR  
 - `ocr_tamil` (CRAFT + PARSEQ) by GnanaPrasath, MIT licensed  
+- EasyOCR (JaidedAI), Apache 2.0 licensed  
 
 ---
 
