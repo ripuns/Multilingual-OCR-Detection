@@ -10,11 +10,11 @@ This project implements an end-to-end OCR system that:
 
 - Detects text regions using the EAST text detector  
 - Groups word-level detections into sentence-level regions  
-- Classifies text type (printed / handwritten)  
-- Routes inputs dynamically using a multiplexer  
-- Recognizes text using multiple TrOCR models  
+- Classifies text type (printed / handwritten) for the English path  
+- Routes inputs dynamically using a registry-backed multiplexer  
+- Recognizes English text via TrOCR, and Tamil text via a separate `ocr_tamil`-backed route, selected per run with `--script`  
 
-The system is designed as a modular pipeline and reflects concepts from multiplexed OCR architectures.
+The system is designed as a modular pipeline and reflects concepts from multiplexed OCR architectures. Tamil support is a small, pilot-scale addition — see `docs/limitations.md` and `docs/research_contribution.md` before relying on its accuracy.
 
 ---
 
@@ -76,7 +76,9 @@ ocr_project/
 ├── classification/  
 │   └── classifier.py  
 ├── recognition/  
-│   └── trocr_recognizer.py  
+│   ├── registry.py  
+│   ├── trocr_recognizer.py  
+│   └── ocr_tamil_recognizer.py  
 ├── models/  
 │   └── frozen_east_text_detection.pb  
 ├── input/images/  
@@ -137,11 +139,13 @@ input/images/sample.png
 
 Optional flags:
 
-python main.py --input path/to/image.png --output-dir path/to/output --config path/to/config.yaml  
+python main.py --input path/to/image.png --output-dir path/to/output --config path/to/config.yaml --script tamil  
 
 - `--input` — path to the input image (overrides `config.yaml`'s `paths.input`)
 - `--output-dir` — directory for cropped regions and results (overrides `config.yaml`'s `paths.output_dir`)
 - `--config` — path to the config file (default: `config.yaml`)
+- `--script` — `english` (default) or `tamil`. This is an explicit choice per run,
+  not automatic script detection — see `docs/limitations.md`.
 
 ---
 
@@ -159,6 +163,7 @@ grouping:
   v_tol_multiplier: 0.5     # vertical tolerance, x average box height
   h_gap_multiplier: 1.5     # horizontal gap tolerance, x average box height
 device: auto                 # auto | cpu | cuda
+script: english               # english | tamil
 paths:
   input: input/images/sample.png
   output_dir: output
@@ -203,21 +208,27 @@ This project reflects a simplified implementation of multiplexed OCR systems:
 
 ## Limitations
 
-- Heuristic classifier (not learned)  
-- No rotation handling  
-- Limited multilingual capability  
-- Performance drops on very small text regions  
+- Heuristic classifier (not learned), English path only
+- No rotation handling
+- No automatic script detection — `--script` is an explicit per-run choice
+- Tamil route is a small (n=5), synthetic pilot — see `docs/limitations.md` and
+  `docs/research_contribution.md` for the measured accuracy and its caveats
+- Performance drops on very small text regions
 
 ---
 
 ## Future Work
 
-- Replace classifier with CNN or CLIP-based model  
-- Add multilingual support  
-- Improve grouping with clustering algorithms  
-- Handle rotated and curved text  
-- Deploy as API (FastAPI)  
-- Enable real-time OCR  
+- Replace classifier with CNN or CLIP-based model
+- Automatic script detection (currently manual via `--script`)
+- Larger, real (non-synthetic) Tamil evaluation set; investigate whether EAST's
+  Latin-script training is the cause of the Tamil pilot's clipping pattern
+  (see `docs/research_contribution.md`)
+- Additional scripts/languages beyond English and Tamil
+- Improve grouping with clustering algorithms
+- Handle rotated and curved text
+- Deploy as API (FastAPI)
+- Enable real-time OCR
 
 ---
 
@@ -240,6 +251,7 @@ IT Engineering, VIT Vellore
 - HuggingFace Transformers  
 - PyTorch  
 - Microsoft TrOCR  
+- `ocr_tamil` (CRAFT + PARSEQ) by GnanaPrasath, MIT licensed  
 
 ---
 

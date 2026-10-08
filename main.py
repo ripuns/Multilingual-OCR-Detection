@@ -13,6 +13,7 @@ from detection.east_detector import EASTDetector
 from grouping.text_grouping import group_text
 from classification.classifier import TextClassifier
 from recognition.trocr_recognizer import TrOCRRecognizer
+from recognition.ocr_tamil_recognizer import OcrTamilRecognizer
 from transformers import logging as hf_logging
 
 hf_logging.set_verbosity_error()
@@ -25,6 +26,15 @@ def parse_args():
     parser.add_argument("--config", default="config.yaml", help="Path to the config YAML file")
     parser.add_argument("--input", default=None, help="Path to the input image (overrides config)")
     parser.add_argument("--output-dir", default=None, help="Directory for cropped images and results (overrides config)")
+    parser.add_argument(
+        "--script",
+        default=None,
+        choices=["english", "tamil"],
+        help="Which recognition path to use (overrides config). 'english' runs the "
+        "existing printed/handwritten classifier+TrOCR path; 'tamil' routes every "
+        "detected region directly to the Tamil recognizer. This is an explicit "
+        "operator choice, not automatic script detection.",
+    )
     return parser.parse_args()
 
 
@@ -42,8 +52,14 @@ def run_pipeline(image_path, output_dir, config):
         min_confidence=config["detection"]["min_confidence"],
         nms_overlap_thresh=config["detection"]["nms_overlap_thresh"],
     )
-    classifier = TextClassifier()
-    recognizer = TrOCRRecognizer(device=config["device"])
+
+    script = config["script"]
+    if script == "tamil":
+        classifier = None
+        recognizer = OcrTamilRecognizer()
+    else:
+        classifier = TextClassifier()
+        recognizer = TrOCRRecognizer(device=config["device"])
 
     boxes, image = detector.detect_text(image_path)
     sentence_boxes = group_text(
@@ -68,7 +84,7 @@ def run_pipeline(image_path, output_dir, config):
 
         pil_img = Image.fromarray(cv2.cvtColor(crop, cv2.COLOR_BGR2RGB))
 
-        label = classifier.classify(pil_img)
+        label = "tamil" if script == "tamil" else classifier.classify(pil_img)
         text, route = recognizer.recognize(pil_img, label)
 
         results.append({
@@ -101,5 +117,7 @@ if __name__ == "__main__":
 
     image_path = args.input or config["paths"]["input"]
     output_dir = args.output_dir or config["paths"]["output_dir"]
+    if args.script is not None:
+        config["script"] = args.script
 
     run_pipeline(image_path, output_dir, config)

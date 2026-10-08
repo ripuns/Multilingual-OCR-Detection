@@ -28,3 +28,10 @@ def test_default_routes_point_to_expected_models():
 
     assert registry.get_route("printed") == "microsoft/trocr-large-printed"
     assert registry.get_route("handwritten") == "microsoft/trocr-large-handwritten"
+
+
+def test_tamil_route_registered_on_import():
+    import recognition.ocr_tamil_recognizer  # noqa: F401 -- side effect: registers "tamil"
+
+    assert "tamil" in registry.registered_routes()
+    assert "ocr_tamil" in registry.get_route("tamil")

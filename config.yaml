@@ -8,6 +8,8 @@ grouping:
 
 device: auto
 
+script: english
+
 paths:
   input: input/images/sample.png
   output_dir: output

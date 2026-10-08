@@ -7,6 +7,7 @@ DEFAULTS = {
     "detection": {"min_confidence": 0.3, "nms_overlap_thresh": 0.3},
     "grouping": {"v_tol_multiplier": 0.5, "h_gap_multiplier": 1.5},
     "device": "auto",
+    "script": "english",
     "paths": {"input": "input/images/sample.png", "output_dir": "output"},
     "logging": {"level": "INFO"},
 }
