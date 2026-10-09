@@ -23,6 +23,11 @@ class TrOCRRecognizer:
             self._loaded[label] = (processor, model)
         return self._loaded[label]
 
+    def warm_up(self):
+        """Forces both routes to load now instead of lazily on first use."""
+        self._load("printed")
+        self._load("handwritten")
+
     def recognize(self, image, label):
         """Returns (text, route) where route is the model id the label resolved to."""
         processor, model = self._load(label)

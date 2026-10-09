@@ -17,6 +17,10 @@ class OcrTamilRecognizer:
             self._ocr = OCR()
         return self._ocr
 
+    def warm_up(self):
+        """Forces the underlying ocr_tamil.OCR() instance to load now."""
+        self._load()
+
     def recognize(self, image, label="tamil"):
         """Returns (text, route). ocr_tamil's API takes an image path, so the
         PIL crop is written to a temp file for the call."""

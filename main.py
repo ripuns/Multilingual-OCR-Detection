@@ -7,7 +7,7 @@ import sys
 import cv2
 from PIL import Image
 
-from boxes import clamp_box
+from boxes import pad_and_clamp_box
 from config import load_config
 from detection.east_detector import EASTDetector
 from grouping.text_grouping import group_text
@@ -90,6 +90,15 @@ def _get_recognizer(script, config):
     return _RECOGNIZER_CACHE[script]
 
 
+def warm_up(config):
+    """Forces the EAST detector and all 3 recognizers to load their models now
+    instead of lazily on first request. Used by the web demo at startup so a
+    live audience never hits a multi-minute cold load mid-demo."""
+    _get_detector(config)
+    for script in ("english", "tamil", "hindi"):
+        _get_recognizer(script, config).warm_up()
+
+
 def run_pipeline(image_path, output_dir, config):
     script = config["script"]
     cropped_dir = os.path.join(output_dir, "cropped")
@@ -148,11 +157,14 @@ def _run_east_based(image_path, config, cropped_dir, script):
         h_gap_multiplier=config["grouping"]["h_gap_multiplier"],
     )
 
+    padding = config["detection"]["crop_padding_px"].get(script, 0)
+
     results = []
     h, w = image.shape[:2]
 
     for i, box in enumerate(sentence_boxes):
-        clamped = clamp_box(*box, width=w, height=h)
+        x1, y1, x2, y2 = box
+        clamped = pad_and_clamp_box(x1, y1, x2, y2, padding, width=w, height=h)
         if clamped is None:
             continue
         x1, y1, x2, y2 = clamped

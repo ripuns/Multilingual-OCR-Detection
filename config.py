@@ -4,7 +4,14 @@ import os
 import yaml
 
 DEFAULTS = {
-    "detection": {"min_confidence": 0.3, "nms_overlap_thresh": 0.3},
+    "detection": {
+        "min_confidence": 0.3,
+        "nms_overlap_thresh": 0.3,
+        # EAST under-sizes boxes for non-Latin glyph clusters (see
+        # docs/research_contribution.md); per-script padding mitigates it.
+        # English is deliberately absent -> defaults to 0, unchanged.
+        "crop_padding_px": {"tamil": 20},
+    },
     "grouping": {"v_tol_multiplier": 0.5, "h_gap_multiplier": 1.5},
     "device": "auto",
     "script": "english",

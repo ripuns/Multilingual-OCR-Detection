@@ -5,3 +5,5 @@ __pycache__/
 *.pyc
 docs/
 experiments
+webapp/uploads/
+uvicorn_log.txt

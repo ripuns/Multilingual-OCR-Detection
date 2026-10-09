@@ -8,6 +8,7 @@
   :root {
     --bg: #0f1117;
     --panel: #171a23;
+    --panel-2: #1d212c;
     --border: #2a2e3a;
     --text: #e6e8ee;
     --muted: #9aa0ad;
@@ -15,6 +16,7 @@
     --accent-dim: #3a5bb8;
     --ok: #4caf7d;
     --warn: #e0a640;
+    --err: #e05c5c;
   }
   * { box-sizing: border-box; }
   body {
@@ -24,15 +26,43 @@
     color: var(--text);
   }
   header {
-    padding: 24px 32px 8px;
+    padding: 20px 32px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
   }
   header h1 { margin: 0 0 4px; font-size: 22px; }
-  header p { margin: 0; color: var(--muted); font-size: 13px; }
-  main {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 24px 32px 64px;
+  header p { margin: 0; color: var(--muted); font-size: 13px; max-width: 600px; }
+
+  nav {
+    display: flex;
+    gap: 6px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px;
   }
+  nav button {
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    border-radius: 999px;
+    padding: 7px 16px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  nav button.active { background: var(--accent); color: white; }
+
+  main {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 20px 32px 64px;
+  }
+  .view { display: none; }
+  .view.active { display: block; }
+
   .panel {
     background: var(--panel);
     border: 1px solid var(--border);
@@ -49,7 +79,7 @@
     padding: 8px 10px;
     font-size: 14px;
   }
-  button {
+  button.primary {
     background: var(--accent);
     color: white;
     border: none;
@@ -58,7 +88,37 @@
     font-size: 14px;
     cursor: pointer;
   }
-  button:disabled { background: var(--accent-dim); cursor: not-allowed; }
+  button.primary:disabled { background: var(--accent-dim); cursor: not-allowed; }
+  button.ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  button.ghost:hover { border-color: var(--accent); }
+
+  .mode-toggle {
+    display: flex;
+    gap: 6px;
+    background: #0c0e13;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px;
+  }
+  .mode-toggle button {
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .mode-toggle button.active { background: var(--accent); color: white; }
+
   .script-note {
     font-size: 12px;
     color: var(--muted);
@@ -79,61 +139,167 @@
   .crop-thumb { width: 90px; max-height: 40px; object-fit: contain; border: 1px solid var(--border); border-radius: 4px; background: white; }
   .route { color: var(--muted); font-size: 11px; }
   .status { font-size: 13px; color: var(--muted); margin-top: 8px; }
-  .status.error { color: #e05c5c; }
+  .status.error { color: var(--err); }
   .status.ok { color: var(--ok); }
   .empty { color: var(--muted); font-style: italic; padding: 16px; text-align: center; }
   code { background: #0c0e13; padding: 1px 5px; border-radius: 4px; }
+
+  .result-card {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .result-text { font-size: 16px; line-height: 1.5; word-break: break-word; }
+  .result-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ok);
+    color: #06140c;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+
+  .findings-claim {
+    font-size: 15px;
+    line-height: 1.6;
+    background: var(--panel-2);
+    border-left: 3px solid var(--accent);
+    padding: 14px 18px;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 20px;
+  }
+  .mitigated-yes { color: var(--ok); }
+  .mitigated-partial { color: var(--warn); }
+  ul.caveats { margin: 0; padding-left: 20px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+  h2.section-title { font-size: 15px; margin: 28px 0 10px; color: var(--text); }
+  h2.section-title:first-child { margin-top: 0; }
 </style>
 </head>
 <body>
 <header>
-  <h1>Multilingual OCR — Demo</h1>
-  <p>English / Tamil / Hindi. A pilot-scale research demo, not a production accuracy claim — see <code>docs/limitations.md</code> in the repo.</p>
+  <div>
+    <h1>Multilingual OCR — Demo</h1>
+    <p>English / Tamil / Hindi. A pilot-scale research demo, not a production accuracy claim.</p>
+  </div>
+  <nav>
+    <button id="nav-run" class="active">Run OCR</button>
+    <button id="nav-research">Research Findings</button>
+  </nav>
 </header>
 <main>
-  <div class="panel">
-    <div class="row">
-      <select id="script">
-        <option value="english">English (EAST + TrOCR)</option>
-        <option value="tamil">Tamil (EAST + ocr_tamil)</option>
-        <option value="hindi">Hindi (EasyOCR, self-detecting)</option>
-      </select>
-      <input type="file" id="file" accept="image/*">
-      <button id="run" disabled>Run OCR</button>
-    </div>
-    <div class="script-note" id="script-note"></div>
-    <img id="preview">
-    <div class="status" id="status"></div>
-  </div>
 
-  <div class="panel">
-    <table id="results-table" style="display:none">
-      <thead>
-        <tr><th>#</th><th>Crop</th><th>Label</th><th>Recognized text</th></tr>
-      </thead>
-      <tbody id="results-body"></tbody>
-    </table>
-    <div class="empty" id="empty-state">Upload an image and run OCR to see results here.</div>
-  </div>
+  <section id="view-run" class="view active">
+    <div class="panel">
+      <div class="row" style="justify-content: space-between;">
+        <div class="row">
+          <select id="script">
+            <option value="english">English (EAST + TrOCR)</option>
+            <option value="tamil">Tamil (EAST + ocr_tamil)</option>
+            <option value="hindi">Hindi (EasyOCR, self-detecting)</option>
+          </select>
+          <input type="file" id="file" accept="image/*">
+          <button class="primary" id="run" disabled>Run OCR</button>
+        </div>
+        <div class="mode-toggle">
+          <button id="mode-user" class="active">User mode</button>
+          <button id="mode-dev">Dev mode</button>
+        </div>
+      </div>
+      <div class="script-note" id="script-note"></div>
+      <img id="preview">
+      <div class="status" id="status"></div>
+    </div>
+
+    <div class="panel" id="user-results-panel">
+      <div id="user-results"></div>
+      <div class="empty" id="user-empty">Upload an image and run OCR to see results here.</div>
+    </div>
+
+    <div class="panel" id="dev-results-panel" style="display:none">
+      <table id="results-table" style="display:none">
+        <thead>
+          <tr><th>#</th><th>Crop</th><th>Label</th><th>Recognized text</th></tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+      <div class="empty" id="dev-empty">Upload an image and run OCR to see results here.</div>
+    </div>
+  </section>
+
+  <section id="view-research" class="view">
+    <div class="panel">
+      <div id="research-content">Loading…</div>
+    </div>
+  </section>
+
 </main>
 
+<div class="toast" id="toast"></div>
+
 <script>
-const API = "/api/ocr";
+const API_OCR = "/api/ocr";
+const API_RESEARCH = "/api/research";
 
 const notes = {
-  english: "EAST detection + grouping + printed/handwritten classifier + TrOCR.",
-  tamil: "EAST detection + grouping, then ocr_tamil (CRAFT+PARSEQ) recognition. Pilot CER on a small synthetic set: 46.3% — EAST systematically under-sizes boxes for Tamil glyphs.",
+  english: "EAST detection + grouping + printed/handwritten classifier + TrOCR. ~4s/region on CPU — a dense document can take a while; this is real per-region inference cost, not a cold-load delay.",
+  tamil: "EAST detection + grouping, then ocr_tamil (CRAFT+PARSEQ) recognition. Pilot CER: 25.9% after a 20px box-padding fix (down from 46.3%) — see Research Findings.",
   hindi: "EasyOCR's own detector (EAST produces zero detections for Devanagari). Pilot CER: 7.1%.",
 };
 
+// ---------- top nav ----------
+const navRun = document.getElementById("nav-run");
+const navResearch = document.getElementById("nav-research");
+const viewRun = document.getElementById("view-run");
+const viewResearch = document.getElementById("view-research");
+
+function showView(name) {
+  for (const [btn, view] of [[navRun, viewRun], [navResearch, viewResearch]]) {
+    const active = (name === "run" && view === viewRun) || (name === "research" && view === viewResearch);
+    btn.classList.toggle("active", active);
+    view.classList.toggle("active", active);
+  }
+  if (name === "research") loadResearch();
+}
+navRun.addEventListener("click", () => showView("run"));
+navResearch.addEventListener("click", () => showView("research"));
+
+// ---------- dev/user mode ----------
+let mode = "user";
+const modeUserBtn = document.getElementById("mode-user");
+const modeDevBtn = document.getElementById("mode-dev");
+const userPanel = document.getElementById("user-results-panel");
+const devPanel = document.getElementById("dev-results-panel");
+
+function setMode(m) {
+  mode = m;
+  modeUserBtn.classList.toggle("active", m === "user");
+  modeDevBtn.classList.toggle("active", m === "dev");
+  userPanel.style.display = m === "user" ? "block" : "none";
+  devPanel.style.display = m === "dev" ? "block" : "none";
+}
+modeUserBtn.addEventListener("click", () => setMode("user"));
+modeDevBtn.addEventListener("click", () => setMode("dev"));
+
+// ---------- run OCR ----------
 const scriptSel = document.getElementById("script");
 const fileInput = document.getElementById("file");
 const runBtn = document.getElementById("run");
 const preview = document.getElementById("preview");
 const statusEl = document.getElementById("status");
-const table = document.getElementById("results-table");
-const body = document.getElementById("results-body");
-const emptyState = document.getElementById("empty-state");
 const scriptNote = document.getElementById("script-note");
 
 function updateNote() {
@@ -159,23 +325,27 @@ runBtn.addEventListener("click", async () => {
 
   runBtn.disabled = true;
   statusEl.className = "status";
-  statusEl.textContent = "Running pipeline… (first run per language loads models, can take a while)";
+  statusEl.textContent = "Running pipeline…";
 
   const form = new FormData();
   form.append("file", f);
   form.append("script", scriptSel.value);
 
+  const startedAt = performance.now();
   try {
-    const res = await fetch(API, { method: "POST", body: form });
+    const res = await fetch(API_OCR, { method: "POST", body: form });
     const data = await res.json();
 
     if (!res.ok) {
       throw new Error(data.detail || "Request failed");
     }
 
-    renderResults(data.results);
+    renderUserResults(data.results);
+    renderDevResults(data.results);
+
+    const secs = data.elapsed_seconds ?? ((performance.now() - startedAt) / 1000).toFixed(2);
     statusEl.className = "status ok";
-    statusEl.textContent = `Done — ${data.results.length} region(s) detected (script: ${data.script}).`;
+    statusEl.textContent = `Done — ${data.results.length} region(s) in ${secs}s (script: ${data.script}).`;
   } catch (err) {
     statusEl.className = "status error";
     statusEl.textContent = "Error: " + err.message;
@@ -184,34 +354,158 @@ runBtn.addEventListener("click", async () => {
   }
 });
 
-function renderResults(results) {
+function renderDevResults(results) {
+  const table = document.getElementById("results-table");
+  const body = document.getElementById("results-body");
+  const empty = document.getElementById("dev-empty");
   body.innerHTML = "";
+
   if (!results.length) {
     table.style.display = "none";
-    emptyState.style.display = "block";
-    emptyState.textContent = "No text regions detected.";
+    empty.style.display = "block";
+    empty.textContent = "No text regions detected.";
     return;
   }
 
   table.style.display = "table";
-  emptyState.style.display = "none";
+  empty.style.display = "none";
 
   for (const r of results) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${r.index}</td>
       <td><img class="crop-thumb" src="${r.crop_url}" loading="lazy"></td>
-      <td>${r.label}<div class="route">${r.route}</div></td>
+      <td>${r.label}<div class="route">${escapeHtml(r.route)}</div></td>
       <td>${escapeHtml(r.text)}</td>
     `;
     body.appendChild(tr);
   }
 }
 
+function renderUserResults(results) {
+  const container = document.getElementById("user-results");
+  const empty = document.getElementById("user-empty");
+  container.innerHTML = "";
+
+  if (!results.length) {
+    empty.style.display = "block";
+    empty.textContent = "No text regions detected.";
+    return;
+  }
+  empty.style.display = "none";
+
+  const fullText = results.map(r => r.text).join("\n");
+
+  // one combined card
+  const card = document.createElement("div");
+  card.className = "result-card";
+  card.innerHTML = `
+    <div class="result-text">${escapeHtml(fullText).replace(/\n/g, "<br>")}</div>
+    <div class="result-actions">
+      <button class="ghost" data-action="copy">Copy</button>
+      <button class="ghost" data-action="share">Share</button>
+    </div>
+  `;
+  card.querySelector('[data-action="copy"]').addEventListener("click", () => copyText(fullText));
+  card.querySelector('[data-action="share"]').addEventListener("click", () => shareText(fullText));
+  container.appendChild(card);
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("Copied to clipboard");
+  } catch {
+    showToast("Could not copy (clipboard permission denied)");
+  }
+}
+
+async function shareText(text) {
+  if (navigator.share) {
+    try {
+      await navigator.share({ text });
+      return;
+    } catch {
+      // user cancelled or share failed; fall through to clipboard
+    }
+  }
+  copyText(text);
+}
+
+function showToast(msg) {
+  const toast = document.getElementById("toast");
+  toast.textContent = msg;
+  toast.classList.add("show");
+  setTimeout(() => toast.classList.remove("show"), 1800);
+}
+
 function escapeHtml(s) {
   const div = document.createElement("div");
   div.textContent = s;
   return div.innerHTML;
+}
+
+// ---------- research findings ----------
+let researchLoaded = false;
+
+async function loadResearch() {
+  if (researchLoaded) return;
+  try {
+    const res = await fetch(API_RESEARCH);
+    const data = await res.json();
+    renderResearch(data);
+    researchLoaded = true;
+  } catch (err) {
+    document.getElementById("research-content").textContent = "Could not load research findings: " + err.message;
+  }
+}
+
+function mitigatedClass(label) {
+  if (/partial/i.test(label)) return "mitigated-partial";
+  return "mitigated-yes";
+}
+
+function renderResearch(data) {
+  const gradientRows = data.gradient.map(row => `
+    <tr>
+      <td><strong>${row.script}</strong></td>
+      <td>${row.detector}</td>
+      <td>${row.detection_succeeds}</td>
+      <td>${row.failure_mode}</td>
+      <td>${row.metric_label}<br><strong>${row.metric_value}</strong></td>
+      <td class="${mitigatedClass(row.mitigated)}">${row.mitigated}</td>
+    </tr>
+  `).join("");
+
+  const paddingRows = data.padding_sweep.map(row => `
+    <tr>
+      <td>${row.padding_px}px</td>
+      <td>${(row.cer * 100).toFixed(1)}%</td>
+      <td>${row.exact_matches}</td>
+    </tr>
+  `).join("");
+
+  const caveats = data.caveats.map(c => `<li>${c}</li>`).join("");
+
+  document.getElementById("research-content").innerHTML = `
+    <h2 class="section-title">The contribution, in one sentence</h2>
+    <div class="findings-claim">${data.claim}</div>
+
+    <h2 class="section-title">The severity gradient (measured across 3 scripts)</h2>
+    <table>
+      <thead><tr><th>Script</th><th>Detector</th><th>Detection succeeds?</th><th>Failure mode</th><th>Measured</th><th>Mitigated?</th></tr></thead>
+      <tbody>${gradientRows}</tbody>
+    </table>
+
+    <h2 class="section-title">Tamil box-padding sweep (the validated fix)</h2>
+    <table>
+      <thead><tr><th>Padding</th><th>CER</th><th>Exact matches</th></tr></thead>
+      <tbody>${paddingRows}</tbody>
+    </table>
+
+    <h2 class="section-title">What this does NOT claim</h2>
+    <ul class="caveats">${caveats}</ul>
+  `;
 }
 </script>
 </body>

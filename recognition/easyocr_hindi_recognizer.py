@@ -21,6 +21,10 @@ class EasyOcrHindiRecognizer:
             self._reader = easyocr.Reader(["hi", "en"], gpu=False, verbose=False)
         return self._reader
 
+    def warm_up(self):
+        """Forces the underlying easyocr.Reader to load now."""
+        self._load()
+
     def detect_and_recognize(self, image):
         """Returns a list of {bbox: [x1,y1,x2,y2], text, route} for the whole image."""
         reader = self._load()
