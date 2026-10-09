@@ -70,4 +70,28 @@ class PaddleOcrRecognizer:
                 })
                 index += 1
 
-        return results
+        return sort_reading_order(results)
+
+
+def sort_reading_order(regions):
+    """Orders regions top-to-bottom by line, then left-to-right within a line.
+    PaddleOCR's own order can put a word before its left neighbour on the same
+    line (e.g. 'सूत्र' before 'क्षार'). Two regions share a line when their
+    vertical centres are within half the line's box height. Re-numbers `index`."""
+    def centre_y(r):
+        return (r["bbox"][1] + r["bbox"][3]) / 2
+
+    lines = []
+    for r in sorted(regions, key=centre_y):
+        if lines:
+            line = lines[-1]
+            height = max(line[0]["bbox"][3] - line[0]["bbox"][1], 1)
+            if abs(centre_y(r) - centre_y(line[0])) <= height / 2:
+                line.append(r)
+                continue
+        lines.append([r])
+
+    ordered = [r for line in lines for r in sorted(line, key=lambda r: r["bbox"][0])]
+    for i, r in enumerate(ordered):
+        r["index"] = i
+    return ordered

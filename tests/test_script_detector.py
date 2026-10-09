@@ -43,6 +43,28 @@ def test_pick_script_ignores_out_of_block_garbage_from_wrong_engine():
     assert script == "english"
 
 
+def test_pick_script_prefers_indic_on_mixed_script_image():
+    # Hindi poster with English words: the English engine turns the Hindi into
+    # Latin garbage and edges ahead on mass, but the Hindi engine reads both.
+    results = {
+        "english": [region("Piles Fissure Fistula Ayurvedic fafar APPLY NOW", 0.95)],
+        "tamil": [],
+        "hindi": [region("की सफल चिकित्सा क्षार सूत्र सीखें", 0.98)],
+    }
+    script, _ = pick_script(results)
+    assert script == "hindi"
+
+
+def test_pick_script_keeps_english_when_indic_share_is_small():
+    results = {
+        "english": [region("A long paragraph of plain English text here", 0.99)],
+        "tamil": [],
+        "hindi": [region("क", 0.5)],
+    }
+    script, _ = pick_script(results)
+    assert script == "english"
+
+
 def test_pick_script_returns_none_when_no_in_block_text():
     results = {"english": [region("123 !!", 0.9)], "tamil": [], "hindi": []}
     script, info = pick_script(results)
