@@ -1,6 +1,6 @@
 import pytest
 
-from detection.east_detector import EASTDetector
+from legacy_v1.detection.east_detector import EASTDetector
 
 
 def test_missing_image_raises_filenotfounderror():

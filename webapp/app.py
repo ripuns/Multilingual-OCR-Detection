@@ -12,9 +12,6 @@ from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from transformers import logging as hf_logging
-
-hf_logging.set_verbosity_error()
 
 from config import load_config
 from main import run_pipeline, warm_up
@@ -30,19 +27,18 @@ _WARM = {"english": False, "tamil": False, "hindi": False, "done": False}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Warming up all 3 recognizers (English, Tamil, Hindi) at startup...")
-    config = load_config("config.yaml")
+    print("Warming up PaddleOCR for all 3 languages (English, Tamil, Hindi)...")
     start = time.monotonic()
-    warm_up(config)
+    warm_up()
     elapsed = time.monotonic() - start
     for script in ("english", "tamil", "hindi"):
         _WARM[script] = True
     _WARM["done"] = True
-    print(f"Warm-up complete in {elapsed:.1f}s. All 3 languages ready for fast requests.")
+    print(f"Warm-up complete in {elapsed:.1f}s. All 3 languages ready.")
     yield
 
 
-app = FastAPI(title="Multilingual OCR Demo", lifespan=lifespan)
+app = FastAPI(title="Multilingual OCR", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -58,57 +54,57 @@ def health():
 
 
 # Static research findings for the demo's "Research" view. Mirrors
-# docs/research_contribution.md's gradient table and padding-fix result --
-# duplicated here (not parsed from the doc) so the frontend has a stable,
-# simple JSON shape independent of markdown formatting.
+# docs/research_contribution.md's V1-vs-V2 comparison -- duplicated here
+# (not parsed from the doc) so the frontend has a stable, simple JSON shape
+# independent of markdown formatting.
 RESEARCH_FINDINGS = {
     "claim": (
-        "A modular OCR pipeline's detector fails differently, and to different "
-        "degrees, when extended to a script it wasn't built for -- a measured "
-        "severity gradient, not a uniform 'works' or 'doesn't work.' Where the "
-        "failure is geometric under-sizing (not complete detection failure), it "
-        "is also partially correctable with a simple, cheap mitigation (box "
-        "padding)."
+        "This project produced two linked findings, not one invented mechanism. "
+        "V1: a modular OCR pipeline's detector fails differently, and to "
+        "different degrees, when extended to a script it wasn't built for -- a "
+        "measured severity gradient. V2: replacing that patchwork with a "
+        "unified, actively-maintained engine (PaddleOCR) fixes the detection "
+        "failures -- but evaluating it against real, independently-sourced "
+        "handwriting (not synthetic renders) shows official/synthetic OCR "
+        "benchmarks substantially overestimate real-world accuracy, and a real "
+        "script-difficulty gradient persists even with a strong, unified backend."
     ),
-    "gradient": [
+    "v1_gradient": [
         {
             "script": "English",
-            "detector": "EAST",
+            "detector": "EAST (legacy_v1)",
             "detection_succeeds": "Yes",
             "failure_mode": "Was a grouping bug (fixed); now none observed",
-            "metric_label": "Qualitative (before/after text diff)",
-            "metric_value": "19/32 lines recovered clipped text after fix",
+            "metric_value": "19/32 lines recovered clipped text after fix (qualitative)",
             "mitigated": "Fixed at the source",
         },
         {
             "script": "Tamil",
-            "detector": "EAST",
+            "detector": "EAST (legacy_v1)",
             "detection_succeeds": "Yes, but under-sized",
             "failure_mode": "Systematic trailing-edge clipping",
-            "metric_label": "Character Error Rate (CER)",
-            "metric_value": "46.3% -> 25.9% with 20px box padding",
+            "metric_value": "46.3% -> 25.9% CER with 20px box padding (synthetic pilot)",
             "mitigated": "Partially, via box padding",
         },
         {
             "script": "Hindi",
-            "detector": "EAST",
+            "detector": "EAST (legacy_v1)",
             "detection_succeeds": "No -- zero boxes at any tested confidence",
             "failure_mode": "N/A for EAST; required a full detector swap",
-            "metric_label": "Character Error Rate (CER)",
-            "metric_value": "7.1% (post-swap, via EasyOCR's own detector)",
+            "metric_value": "7.1% CER post-swap, via EasyOCR's own detector (synthetic pilot)",
             "mitigated": "Fixed by swapping detectors",
         },
     ],
-    "padding_sweep": [
-        {"padding_px": 0, "cer": 0.463, "exact_matches": "0/5"},
-        {"padding_px": 10, "cer": 0.352, "exact_matches": "1/5"},
-        {"padding_px": 20, "cer": 0.259, "exact_matches": "1/5"},
-        {"padding_px": 30, "cer": 0.370, "exact_matches": "1/5"},
+    "v2_real_data": [
+        {"script": "English", "dataset": "Teklia/IAM-line (real handwriting)", "n": 30, "cer": 0.241, "exact_match": "0/30", "synthetic_cer": None},
+        {"script": "Hindi", "dataset": "IIIT-INDIC-HW-WORDS-Hindi (real handwriting)", "n": 30, "cer": 0.477, "exact_match": "2/30", "synthetic_cer": 0.071},
+        {"script": "Tamil", "dataset": "IIIT-INDIC-HW-WORDS-Tamil (real handwriting)", "n": 30, "cer": 0.711, "exact_match": "1/30", "synthetic_cer": 0.259},
     ],
+    "official_benchmarks": {"english": 0.8525, "tamil": 0.942, "hindi": 0.8496},
     "caveats": [
-        "All non-English numbers are from a small (n=5), synthetic pilot set -- not a general accuracy claim.",
-        "Padding does not fix everything: one Tamil sample remains a severe outlier (77% CER) after the fix.",
-        "Why EAST fails completely on Devanagari (vs. only under-sizing for Tamil) was not isolated -- only one font/rendering method was tested.",
+        "All real-data numbers are from n=30 samples per non-English language -- a real signal, not a statistically robust benchmark.",
+        "Why PaddleOCR's official Tamil benchmark (94.2%) diverges so sharply from this project's real-handwriting measurement (71.1% CER) was not isolated.",
+        "V1's findings remain valid descriptions of that architecture's failure modes; V1 is superseded as the production path, not 'wrong.'",
         "A patent claim was investigated and explicitly dropped as not viable -- see docs/patent_ip_assessment.md. This is a paper-track, engineering/evaluation contribution, not a novel algorithm.",
     ],
 }

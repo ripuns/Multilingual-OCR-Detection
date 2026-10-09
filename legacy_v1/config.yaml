@@ -1,0 +1,22 @@
+detection:
+  min_confidence: 0.3
+  nms_overlap_thresh: 0.3
+  # EAST under-sizes boxes for Tamil glyph clusters; padding mitigates it
+  # (see docs/research_contribution.md for the sweep that picked 20px).
+  crop_padding_px:
+    tamil: 20
+
+grouping:
+  v_tol_multiplier: 0.5
+  h_gap_multiplier: 1.5
+
+device: auto
+
+script: english
+
+paths:
+  input: input/images/sample.png
+  output_dir: output
+
+logging:
+  level: INFO

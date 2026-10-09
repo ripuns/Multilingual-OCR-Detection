@@ -1,6 +1,6 @@
 import numpy as np
 
-from recognition.registry import register
+from legacy_v1.recognition.registry import register
 
 register("hindi", "easyocr (CRAFT detection + CRNN recognition, lang='hi')")
 

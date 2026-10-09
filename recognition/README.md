@@ -1,65 +1,44 @@
 # recognition/
 
 ## What
-Runs text recognition, routing to the correct backend by language/script.
-Three backends exist today: TrOCR (English printed/handwritten), `ocr_tamil`
-(Tamil, EAST-cropped), and EasyOCR (Hindi, self-detecting — see Why below).
+Runs detection + recognition for all 3 supported languages (English, Tamil,
+Hindi) through a single backend, selected by the registry.
 
 ## Why
-Different scripts/styles need different recognition models, and sometimes
-different *detection* too: EAST (used for English and Tamil) produces zero
-bounding boxes for Devanagari text at any confidence threshold tested, down to
-0.05 — not low-confidence boxes that got filtered, an empty result at every
-threshold. See `docs/research_contribution.md` for the full measurement. So
-Hindi can't just plug a new recognizer into the existing EAST-crop pipeline;
-it needs its own detection stage entirely.
+V1 (preserved in `legacy_v1/`) used three separate libraries with three
+different interfaces (TrOCR via `transformers`, `ocr_tamil` via its own
+package, EasyOCR via its own package), and needed a second recognizer
+contract once it turned out EAST couldn't detect Devanagari at all — see
+`docs/research_contribution.md`. V2 replaces all of that with one engine,
+PaddleOCR PP-OCRv5, which has its own per-language detection and recognition
+models and handles all 3 languages through the same API.
 
 ## How
-Two distinct contracts exist, because of the Devanagari finding above:
-
-- **Crop-based recognizers** (`recognize(image, label) -> (text, route)`):
-  take an already-detected, already-cropped region from EAST. Used by English
-  and Tamil.
-- **Self-detecting recognizers** (`detect_and_recognize(image) ->
-  [{bbox, text, route}, ...]`): take the *whole* image and own their own
-  detection. Used by Hindi, since EAST doesn't work for it.
-
-`main.py` picks which contract to use per `--script` value via two small
-dicts (`CROP_BASED_RECOGNIZERS`, `SELF_DETECTING_RECOGNIZERS`) — English and
-Tamil still run EAST detection + grouping + clamping exactly as before; Hindi
-skips all three and calls the self-detecting recognizer directly on the full
-image.
-
-- `registry.py` — a route registry independent of any specific recognizer
-  class: `register(name, model_id)` adds a route, `get_route(name)` looks one
-  up (raises `KeyError` with the list of known routes if missing),
-  `registered_routes()` lists what's registered.
-- `trocr_recognizer.py` — `TrOCRRecognizer(device="auto")` registers the two
-  default English routes (`printed` -> `microsoft/trocr-large-printed`,
-  `handwritten` -> `microsoft/trocr-large-handwritten`) at import time, then
-  loads a route's processor/model **lazily** on first use.
-- `ocr_tamil_recognizer.py` — `OcrTamilRecognizer` registers the `tamil`
-  route, wraps the `ocr_tamil` PyPI package (CRAFT+PARSEQ), which takes an
-  image *path* — the crop is written to a temp file internally and removed
-  after the call.
-- `easyocr_hindi_recognizer.py` — `EasyOcrHindiRecognizer` registers the
-  `hindi` route, wraps `easyocr.Reader(['hi','en'])`. Implements
-  `detect_and_recognize()`, not `recognize()` — it does its own CRAFT-based
-  detection on the full image and returns every detected region's bbox/text.
+- `registry.py` — unchanged pattern from V1: `register(name, model_id)` /
+  `get_route(name)` / `registered_routes()`.
+- `paddle_recognizer.py` — `PaddleOcrRecognizer(script)` registers all 3
+  routes (`english` -> `en`, `tamil` -> `ta`, `hindi` -> `hi`) at import time.
+  `detect_and_recognize(image_path)` is the only method — PaddleOCR owns
+  detection internally, so there's no separate crop-based contract anymore
+  (V1 needed two: crop-based for EAST-compatible scripts, self-detecting for
+  Hindi). Returns a list of `{index, bbox, text, score, route}` per detected
+  region, including PaddleOCR's own recognition confidence score.
+  `enable_mkldnn=False` works around a PaddlePaddle/oneDNN crash
+  (`NotImplementedError` on `ConvertPirAttribute2RuntimeAttribute`) observed
+  on this project's CPU during evaluation.
 
 ## Structure
 - `registry.py` — `register()` / `get_route()` / `registered_routes()`.
-- `trocr_recognizer.py` — `TrOCRRecognizer`, English, crop-based.
-- `ocr_tamil_recognizer.py` — `OcrTamilRecognizer`, Tamil, crop-based.
-- `easyocr_hindi_recognizer.py` — `EasyOcrHindiRecognizer`, Hindi, self-detecting.
+- `paddle_recognizer.py` — `PaddleOcrRecognizer`, the only recognizer in
+  production; registers all 3 language routes as an import-time side effect.
 
 ## Summary
-Started as a hardcoded dict (both English models loaded unconditionally in
-`__init__`); grew into a registry supporting lazy loading and genuinely
-different backends per route; then had to grow a second contract
-(self-detecting) once Hindi revealed that EAST itself — not just the
-recognizer — doesn't transfer to every script. That escalation is itself part
-of the project's measured finding, not incidental plumbing — see
-`docs/research_contribution.md`. License/scope verification for any newly
-registered model is documented in `docs/dataset_and_license_inventory.md`, not
-enforced by this module.
+V1 went from a hardcoded dict, to a registry with lazy loading, to a registry
+supporting two different recognizer contracts (crop-based vs self-detecting)
+once Hindi revealed EAST itself didn't transfer to every script. V2 replaces
+all of that complexity with one engine that never needed a separate
+detection stage to begin with. The real cost of that simplicity is
+accuracy on real handwriting, not architecture — see
+`docs/research_contribution.md` for the measured numbers (24.1%-71.1% CER
+depending on script, real datasets) and `docs/limitations.md` for what that
+means in practice.

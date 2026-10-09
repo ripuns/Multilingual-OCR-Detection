@@ -6,7 +6,7 @@ any later box that drifted left or up was absorbed into the group without
 the crop rectangle expanding to include it (silent clipping).
 """
 
-from grouping.text_grouping import group_text
+from legacy_v1.grouping.text_grouping import group_text
 
 
 def test_empty_input_returns_empty_list():

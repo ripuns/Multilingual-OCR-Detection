@@ -1,4 +1,4 @@
-from boxes import clamp_box, pad_and_clamp_box
+from legacy_v1.boxes import clamp_box, pad_and_clamp_box
 
 
 def test_box_fully_inside_image_unchanged():

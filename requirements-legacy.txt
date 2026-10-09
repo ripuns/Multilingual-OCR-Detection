@@ -1,0 +1,12 @@
+# Dependencies for legacy_v1/ only -- the preserved V1 architecture (EAST +
+# TrOCR + ocr_tamil + EasyOCR), kept for the V1-vs-V2 research comparison in
+# docs/research_contribution.md. NOT needed to run the production app.
+imutils==0.5.4
+torch==2.11.0
+torchvision==0.26.0
+torchaudio==2.11.0
+transformers==4.38.2
+accelerate==1.13.0
+tqdm==4.67.3
+ocr_tamil==0.4.1
+easyocr==1.7.2

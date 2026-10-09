@@ -2,385 +2,193 @@
   {
     "index": 0,
     "bbox": [
-      455,
-      0,
-      521,
-      13
+      17,
+      7,
+      48,
+      37
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "THEVA"
+    "text": "3.",
+    "score": 0.9989,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 1,
     "bbox": [
-      331,
-      0,
-      656,
-      17
+      87,
+      10,
+      968,
+      61
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "JUSTLY WAY THEY ARE SUITABLE."
+    "text": "A factory safety system uses the following components connected to an 8051",
+    "score": 0.9914,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 2,
     "bbox": [
-      113,
-      15,
-      366,
-      45
+      412,
+      2,
+      648,
+      16
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "FACTORY SAFETY SYSTEM"
+    "text": "why they are suitable.",
+    "score": 0.9872,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 3,
     "bbox": [
-      369,
-      22,
-      840,
-      51
+      88,
+      40,
+      276,
+      72
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "USES THE FOLLOWING COMPONENTS CONNECTED"
+    "text": "microcontroller:",
+    "score": 0.9999,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 4,
     "bbox": [
-      844,
-      29,
-      965,
-      53
+      173,
+      72,
+      777,
+      116
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "TO AN 8051"
+    "text": "Smoke sensor connected to External Interrupt 0 (INT0)",
+    "score": 0.9912,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 5,
     "bbox": [
-      91,
-      42,
-      251,
-      64
+      175,
+      103,
+      882,
+      149
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "MICROCONTROLLE"
+    "text": "Emergency push button connected to External Interrupt 1 (INT1)",
+    "score": 0.9939,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 6,
     "bbox": [
-      165,
-      75,
-      777,
-      112
+      175,
+      133,
+      491,
+      169
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "SMOKE SENSOR CONNECTED TO EXTERNAL INTERRUPT 0 ("
+    "text": "Buzzer connected to Port P2",
+    "score": 1.0,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 7,
     "bbox": [
-      179,
-      104,
-      685,
-      138
+      175,
+      163,
+      562,
+      200
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "EMERGENCY PUSH BUTTON CONNECTED TO EXTERNAL"
+    "text": "LED indicator connected to Port P1",
+    "score": 0.9889,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 8,
     "bbox": [
-      556,
-      116,
-      591,
-      138
+      88,
+      188,
+      748,
+      238
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "TO"
+    "text": "Write an 8051 assembly program using interrupts such that",
+    "score": 0.9999,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 9,
     "bbox": [
-      688,
-      117,
-      881,
-      143
+      993,
+      205,
+      1013,
+      236
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "INTERRUPT 1 (INT1)"
+    "text": "1",
+    "score": 0.5502,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 10,
     "bbox": [
-      181,
-      135,
-      376,
-      164
+      171,
+      221,
+      849,
+      268
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "BUZZER CONNECTED"
+    "text": "When smoke is detected, INT0 triggers and the buzzer sounds",
+    "score": 0.9886,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 11,
     "bbox": [
-      371,
-      140,
-      505,
-      166
+      174,
+      251,
+      330,
+      287
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "ITO PORT P2"
+    "text": "continuously.",
+    "score": 1.0,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 12,
     "bbox": [
-      178,
-      162,
-      457,
-      194
+      174,
+      281,
+      964,
+      328
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "LED INDICATOR CONNECTED"
+    "text": "When the emergency button is pressed, INT1 triggers and the LED blinks",
+    "score": 0.9915,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 13,
     "bbox": [
-      449,
       174,
-      568,
-      199
+      311,
+      266,
+      346
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "TO PORT P1"
+    "text": "rapidly.",
+    "score": 0.9996,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 14,
     "bbox": [
-      90,
-      193,
-      158,
-      217
+      86,
+      337,
+      972,
+      387
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "WRITE"
+    "text": "Configure the interrupt enable and priority registers so that the smoke alarm has",
+    "score": 0.987,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   },
   {
     "index": 15,
     "bbox": [
-      158,
-      195,
-      464,
-      228
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "AN 8051 ASSEMBLY PROGRAM"
-  },
-  {
-    "index": 16,
-    "bbox": [
-      465,
-      204,
-      746,
-      231
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "USING INTERRUPTS SUCH THAT"
-  },
-  {
-    "index": 17,
-    "bbox": [
-      181,
-      225,
-      325,
-      252
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "WHEN SMOKE"
-  },
-  {
-    "index": 18,
-    "bbox": [
-      322,
-      230,
-      514,
-      255
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "IS DETECTED, INTO"
-  },
-  {
-    "index": 19,
-    "bbox": [
-      651,
-      233,
-      693,
-      258
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "THE"
-  },
-  {
-    "index": 20,
-    "bbox": [
-      521,
-      235,
-      846,
-      260
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "TRIGGERS AND THE BUZZER SOUNDS"
-  },
-  {
-    "index": 21,
-    "bbox": [
-      177,
-      256,
-      323,
-      279
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "CONTINUOUSLV"
-  },
-  {
-    "index": 22,
-    "bbox": [
-      184,
-      286,
-      293,
-      309
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "WHEN THE"
-  },
-  {
-    "index": 23,
-    "bbox": [
-      285,
-      289,
-      494,
-      317
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "EMERGENCY BUTTON"
-  },
-  {
-    "index": 24,
-    "bbox": [
-      519,
-      293,
-      668,
-      317
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "PRESSED, INT1"
-  },
-  {
-    "index": 25,
-    "bbox": [
-      689,
-      295,
-      960,
-      319
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "PIGGERS AND THE LED BLINKS"
-  },
-  {
-    "index": 26,
-    "bbox": [
-      178,
-      315,
-      267,
-      340
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "RAPIDLY."
-  },
-  {
-    "index": 27,
-    "bbox": [
-      90,
-      342,
+      87,
+      368,
       569,
-      378
+      408
     ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "CONFIGURE THE INTERRUPT ENABLE AND PRIORITY"
-  },
-  {
-    "index": 28,
-    "bbox": [
-      576,
-      351,
-      787,
-      379
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "REGISTERS SO THAT THE"
-  },
-  {
-    "index": 29,
-    "bbox": [
-      670,
-      353,
-      968,
-      377
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "SO THAT THE SMOKE ALARM HAS"
-  },
-  {
-    "index": 30,
-    "bbox": [
-      93,
-      374,
-      360,
-      402
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "HIGHER PRIORITY THAN THE"
-  },
-  {
-    "index": 31,
-    "bbox": [
-      363,
-      380,
-      572,
-      407
-    ],
-    "label": "printed",
-    "route": "microsoft/trocr-large-printed",
-    "text": "EMERGENCY BUTTON."
+    "text": "higher priority than the emergency button.",
+    "score": 0.9959,
+    "route": "PaddleOCR PP-OCRv5 (en)"
   }
 ]

@@ -1,32 +1,16 @@
-THEVA
-JUSTLY WAY THEY ARE SUITABLE.
-FACTORY SAFETY SYSTEM
-USES THE FOLLOWING COMPONENTS CONNECTED
-TO AN 8051
-MICROCONTROLLE
-SMOKE SENSOR CONNECTED TO EXTERNAL INTERRUPT 0 (
-EMERGENCY PUSH BUTTON CONNECTED TO EXTERNAL
-TO
-INTERRUPT 1 (INT1)
-BUZZER CONNECTED
-ITO PORT P2
-LED INDICATOR CONNECTED
-TO PORT P1
-WRITE
-AN 8051 ASSEMBLY PROGRAM
-USING INTERRUPTS SUCH THAT
-WHEN SMOKE
-IS DETECTED, INTO
-THE
-TRIGGERS AND THE BUZZER SOUNDS
-CONTINUOUSLV
-WHEN THE
-EMERGENCY BUTTON
-PRESSED, INT1
-PIGGERS AND THE LED BLINKS
-RAPIDLY.
-CONFIGURE THE INTERRUPT ENABLE AND PRIORITY
-REGISTERS SO THAT THE
-SO THAT THE SMOKE ALARM HAS
-HIGHER PRIORITY THAN THE
-EMERGENCY BUTTON.
+3.
+A factory safety system uses the following components connected to an 8051
+why they are suitable.
+microcontroller:
+Smoke sensor connected to External Interrupt 0 (INT0)
+Emergency push button connected to External Interrupt 1 (INT1)
+Buzzer connected to Port P2
+LED indicator connected to Port P1
+Write an 8051 assembly program using interrupts such that
+1
+When smoke is detected, INT0 triggers and the buzzer sounds
+continuously.
+When the emergency button is pressed, INT1 triggers and the LED blinks
+rapidly.
+Configure the interrupt enable and priority registers so that the smoke alarm has
+higher priority than the emergency button.

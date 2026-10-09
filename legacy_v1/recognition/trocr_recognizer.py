@@ -1,7 +1,7 @@
 import torch
 from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 
-from recognition.registry import get_route, register
+from legacy_v1.recognition.registry import get_route, register
 
 register("printed", "microsoft/trocr-large-printed")
 register("handwritten", "microsoft/trocr-large-handwritten")

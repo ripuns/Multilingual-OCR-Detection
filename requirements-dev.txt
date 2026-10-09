@@ -1,0 +1,3 @@
+# Dev-only: running tests/ and pulling real evaluation datasets in experiments/runs/
+pytest==9.1.1
+datasets==5.1.0

@@ -1,4 +1,7 @@
-# grouping/
+# grouping/ (legacy_v1)
+
+> Part of `legacy_v1/`, the preserved pre-PaddleOCR architecture — not the
+> production pipeline. See `legacy_v1/README.md`.
 
 ## What
 Merges word-level bounding boxes produced by the EAST detector into

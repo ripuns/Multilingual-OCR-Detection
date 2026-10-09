@@ -3,7 +3,7 @@ import tempfile
 
 from ocr_tamil.ocr import OCR
 
-from recognition.registry import register
+from legacy_v1.recognition.registry import register
 
 register("tamil", "ocr_tamil (CRAFT detection + PARSEQ recognition)")
 
