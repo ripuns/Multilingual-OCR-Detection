@@ -47,14 +47,14 @@ one (V2) is reproducible.
 | Recognition engine | PaddleOCR (`paddleocr==3.7.0`, `paddlepaddle==3.3.1`): English -> PP-OCRv6 medium det+rec; Tamil -> PP-OCRv5 server det + `ta_PP-OCRv5_mobile_rec`; Hindi -> PP-OCRv5 server det + `devanagari_PP-OCRv5_mobile_rec` |
 | Language selection | **Automatic by default** (`auto`), manual override `english` / `tamil` / `hindi` |
 | Interfaces | CLI (`main.py`), HTTP API + web UI (`webapp/`) |
-| Web UI modes | User mode (clean text, Copy/Share), Dev mode (regions, crops, confidence), Research tab |
+| Web UI | Single-file, dependency-free, light/dark, responsive: drag-drop/paste/"Try sample" upload, Auto-detect default, **Simple** view (text, Copy/Download/Share, low-confidence marking, "Read as <language>" re-run) and **Developer** view (boxes drawn on the image, evidence bars, regions table, raw JSON), Research tab |
 | Outputs | `ocr_results.json`, `ocr_results.txt`, `ocr_detection.json`, `cropped/*.png` |
 | Runtime | CPU-only, single process; all three models warm-loaded at web-server start |
 | Measured real-data accuracy (30 images each) | English 24.1% CER (sentence lines), Hindi 47.7% (words), Tamil 71.1% (words) — **not comparable across languages** |
-| Script identification accuracy | see [Section 10.5](#105-automatic-script-identification-accuracy) |
+| Script identification accuracy (150 real images) | 77.3% overall: English 96%, Hindi 86%, Tamil 50% (first argmax rule: 65.3%); see [Section 10.5](#105-automatic-script-identification-accuracy) |
 | Tests | 41 passing (20 production + 21 legacy), no models/network needed |
 | Language / platform | Python 3.11.4, Windows 11 (developed and measured on AMD Ryzen 5 5625U, 15.3 GB RAM, no GPU) |
-| Codebase size | ~150 lines `main.py`, ~60 `paddle_recognizer.py`, ~40 `script_detector.py`, ~170 `webapp/app.py`, ~590 `webapp/static/index.html` |
+| Codebase size | ~150 lines `main.py`, ~100 `paddle_recognizer.py`, ~50 `script_detector.py`, ~200 `webapp/app.py`, ~814 `webapp/static/index.html` |
 | Previous architecture | `legacy_v1/` (EAST + grouping + classifier + TrOCR / ocr_tamil / EasyOCR), preserved, runnable, tested |
 | Author | Ripun, IT Engineering, VIT Vellore |
 
@@ -108,7 +108,7 @@ The contributions are **engineering and evaluation findings**, not a new algorit
 | C5 | On real handwriting the engines still err a lot: English 24.1%, Hindi 47.7%, Tamil 71.1% CER | 30 real images each | Real signal, small n; cross-language comparison invalid (different units) |
 | C6 | A clean synthetic pilot made accuracy look far better than on real data (Hindi 7.1% vs 47.7%; Tamil 25.9% vs 71.1%) | V1 pilots vs V2 real-data runs | Supports an evaluation-practice caution only; engine and data both changed |
 | C7 | "Script leakage": the Tamil engine outputs Latin letters on 17/30 real images (CER 0.91 on those vs 0.46 on the rest); Hindi 2/30 | per-sample analysis of C5 outputs | Solid for this sample; mechanism not isolated |
-| C8 | Automatic script identification from recognizer outputs, evaluated on 150 real images with a held-out split | [Section 10.5](#105-automatic-script-identification-accuracy) | see results |
+| C8 | Automatic script identification from recognizer outputs (argmax + Indic override), evaluated on 150 real images | 77.3% overall (English 96%, Hindi 86%, Tamil 50%); the Tamil misses are recognizer failures (no Tamil characters emitted) | Real signal, small n; works for English/Hindi, unreliable for handwritten Tamil; current rule's held-out figure not clean |
 
 **Explicitly not claimed:** a new algorithm; that V2 is more accurate than V1 on the
 same data (V1 was never run on the real datasets); that script difficulty orders as
@@ -152,7 +152,7 @@ one-time model weight download).
 | Script identification | `recognition/script_detector.py` | pure functions: in-script glyph mass, argmax with an Indic override at >= 25% share |
 | Registry | `recognition/registry.py` | name -> engine label map |
 | Configuration | `config.py`, `config.yaml` | `script`, `paths`, `logging` with defaults merge |
-| Frontend | `webapp/static/index.html` | script chooser, user/dev modes, detected-script chip, research tab |
+| Frontend | `webapp/static/index.html` | single-file UI: upload, language chooser, simple/developer views, overlay, research tab |
 
 ### 4.3 PaddleOcrRecognizer
 
@@ -244,6 +244,7 @@ Detection info (`ocr_detection.json`, and `detection` in the API response):
 |---|---|
 | `GET /api/health` | `{"status":"ok","warm":{english,tamil,hindi,done}}` |
 | `GET /api/research` | static research-findings JSON used by the Research tab |
+| `GET /api/sample` | the fixed sample page (`input/images/sample.png`), used by the UI's "Try sample" button |
 | `POST /api/ocr` | multipart: `file` (image), `script` (`auto` default / `english` / `tamil` / `hindi`) |
 | `GET /api/crop/{run_id}/{n}.png` | cropped region image; `run_id` must match `[a-f0-9]{12}` and filename `\d+\.png`, else HTTP 400 |
 | `GET /` | static frontend |
@@ -272,19 +273,44 @@ CLI flags override config: `--config`, `--input`, `--output-dir`, `--script`
 
 ### 5.5 Web UI behavior
 
-- **Script buttons:** Auto-detect (default), English, Tamil, Hindi, each with a short note
-  containing its measured accuracy.
-- **User mode:** one combined text card (all regions joined by newlines) with **Copy** (clipboard) and
-  **Share** (Web Share API where available, otherwise copy).
-- **Dev mode:** per-region table with crop thumbnail, confidence pill (green >= 0.85,
-  amber >= 0.60, red below), engine label and text.
-- **Detected-script chip** after an auto run (script + percentage share), or a warning chip
-  if no readable text was found.
-- **Status line** with a spinner and elapsed seconds.
-- **Research tab:** renders `/api/research`: the V1 failure table, V2 real-data CER bars
-  (with V1 synthetic-pilot bars), the script-leakage table, the script-identification
-  table, vendor benchmark context (with model names) and the "what this does NOT claim"
-  list.
+Single file (`webapp/static/index.html`), no build step, no external fonts/scripts (works
+offline), responsive down to ~390 px, light and dark themes (system default, saved in
+`localStorage` when available). Screenshots: `docs/figures/` (local) — see Section 17.1.
+
+- **Top bar:** brand, two tabs (Recognize, Research & accuracy), a server-status pill fed by
+  `/api/health` polling ("Loading language models…" until all three are warm, then "Models ready",
+  or "Server unreachable"), theme toggle.
+- **Step 1 — Image:** drag-and-drop, click to browse, paste (Ctrl+V) or **Try sample** (loads
+  `/api/sample`); PNG/JPG/BMP up to 15 MB, validated client-side; preview with size and
+  dimensions and a Remove button.
+- **Step 2 — Language:** **Auto-detect** (default, "recommended") or English / Tamil / Hindi, with a
+  one-line hint per choice (auto: about 3x slower and least reliable for handwritten Tamil).
+  **Extract text** or Ctrl+Enter runs it.
+- **States:** empty; loading (spinner, elapsed timer, Cancel via `AbortController`, text that
+  explains why auto-detect takes longer); error (distinguishes "server unreachable" from
+  server-reported errors, with Try again); result.
+- **Result header:** chip with the detected script (auto), the chosen language (manual), or a
+  warning when no readable text was found; **Simple / Developer** switch.
+- **Simple view:** recognized text with regions on one line joined by spaces (same rule as the
+  server's `sort_reading_order`), correct font and `lang` attribute for Tamil/Devanagari; stats
+  (lines, mean confidence, seconds); **Copy**, **Download .txt** (UTF-8 with BOM) and **Share**
+  (Web Share API, else clipboard). Lines with a region below 60% confidence get a dotted
+  underline plus a notice. After an auto run: "Not the right language? Read as ..." buttons re-run
+  the same image in manual mode.
+- **Developer view:** metadata (requested/used script, regions, elapsed, warm flag, run id,
+  engine); for auto runs, per-script evidence bars with the note that this is a heuristic;
+  the image with every region box drawn as an SVG overlay (green >= 0.85, amber >= 0.60, red
+  below) with hover linking between boxes and table rows; a regions table with crop thumbnails
+  and confidence pills; collapsible raw JSON with Copy JSON.
+- **Honesty by design:** the UI does not show the winner `share` as a confidence (it is 1.0 whenever
+  only one engine emits in-script characters, including when that winner is wrong, Section 10.5).
+- **Research tab:** renders `/api/research`: real-handwriting CER bars (with a note that the
+  datasets differ and are not comparable, and the earlier synthetic-pilot bars), the
+  script-leakage table, the script-identification table, the V1 failure table, vendor
+  benchmark context with model names, and the "what this does NOT claim" list.
+- **Robustness/accessibility:** keyboard-operable dropzone and radio group, visible focus rings,
+  `aria-live` results, `prefers-reduced-motion` respected; all dynamic text is inserted via
+  `textContent` (no HTML injection from OCR output).
 
 ---
 
@@ -429,6 +455,8 @@ kept (not deleted) so the V1-vs-V2 comparison is reproducible.
 | `recognition/paddle_recognizer.py` | PaddleOCR wrapper per language |
 | `recognition/script_detector.py` | script identification scoring |
 | `webapp/app.py`, `webapp/static/index.html` | web API and UI |
+| `webapp/ui_tests/` | `mock_server.py` (canned API, real static UI) and `ui_test.py` (Playwright, 32 checks); not part of `pytest` |
+| `docs/figures/` | UI screenshots for the report (local-only; see its README) |
 | `tests/` | 20 production tests |
 | `legacy_v1/` | V1 code, tests, config, README |
 | `requirements*.txt` | `requirements.txt` (production), `-dev` (pytest, datasets), `-webapp` (FastAPI, uvicorn), `-legacy` (V1 stack) |
@@ -593,7 +621,59 @@ back to them on hard input (inferred from outputs, not from the dictionary files
 
 ### 10.5 Automatic script identification accuracy
 
-SCRIPT_ID_RESULTS_PLACEHOLDER
+Both rules were scored on the same cached engine outputs for 150 real images (50 per
+language). "Design" = the first 30 images per language (examined while the first rule was built);
+"held-out" = items 30-49 per language. The `argmax` rule was fixed before any of this data was
+scored; the `current` rule (argmax + Indic override at >= 25% of glyph mass) was introduced before
+the evaluation ran, so **its held-out figure is not a clean unseen-data estimate**.
+
+| Rule | Design (n=90) | Held-out (n=60) | All (n=150) |
+|---|---|---|---|
+| `argmax` (first rule) | 62.2% (56/90) | 70.0% (42/60) | 65.3% (98/150) |
+| `current` (+ Indic override) | 76.7% (69/90) | 78.3% (47/60) | **77.3% (116/150)** |
+
+Per true script, all 150 images:
+
+| True script | `argmax` | `current` |
+|---|---|---|
+| English | 48/50 (96%) | 48/50 (96%) |
+| Hindi | 32/50 (64%) | 43/50 (86%) |
+| Tamil | 18/50 (36%) | 25/50 (50%) |
+
+Confusion matrix of the `current` rule (all 150; rows = true script, columns = predicted):
+
+| True \ predicted | english | tamil | hindi | none |
+|---|---|---|---|---|
+| english | 48 | 0 | 0 | 2 |
+| tamil | 18 | 25 | 2 | 5 |
+| hindi | 6 | 0 | 43 | 1 |
+
+Held-out only (n=60, `current`): English 20/20, Hindi 17/20 (3 -> english), Tamil 10/20 (6 -> english, 4 -> none).
+
+What the numbers show:
+
+- **English is reliable (96%).** The two misses are the two images on which the English engine
+  itself returned an empty string (no evidence -> `none`, which the pipeline turns into a flagged
+  English fallback).
+- **The Indic override helped without a measured downside here:** +12 points overall (Hindi 64% -> 86%,
+  Tamil 36% -> 50%), and **0 of the 50 English images were misrouted to an Indic script**.
+- **Tamil is unreliable (50%) and the cause is the recognizer, not the scoring rule.** Of the 25
+  misidentified Tamil images, in 21 the Tamil engine's output contained **no Tamil characters at all**
+  (22 contained Latin letters, i.e. script leakage) and in 3 the Tamil share was below 25%; of the 7
+  misidentified Hindi images, 5 had no Devanagari at all. When the matching engine cannot read the
+  script, no rule built on the engines' outputs can recognize it.
+- **`share` is not a usable confidence.** The median winner share is 1.0 because the other engines
+  often emit no in-script characters, which also happens when the winner is wrong (an English winner
+  on a Tamil image typically has share 1.0). The UI therefore does not present it as certainty.
+- **Practical guidance:** use auto-detect for English and Hindi; when the text is known to be
+  handwritten Tamil, choose Tamil manually (it is also 2-3x faster).
+
+Latency (medians over the 150 images, which mix sentence lines and word images, CPU-only): English
+engine 2.95 s, Tamil engine 5.16 s, Hindi engine 5.11 s per call, **13.27 s per image for all three**
+(auto mode) vs about 3-5 s for one engine (manual mode). Two images stalled for about 36 minutes and
+about 3 hours (the laptop pausing); medians are used so those two do not distort the figures.
+Sample size is 50 images per language; intervals are wide (e.g. Tamil 25/50 is 50% +/- about 14 points).
+
 
 ### 10.6 Latency (CPU, warm models, single measurements)
 
@@ -604,7 +684,7 @@ SCRIPT_ID_RESULTS_PLACEHOLDER
 | V2 Hindi, one real word image, manual | 2.5 s |
 | V1 English, 32 regions | 126.8 s (TrOCR-large, ~4 s/region) |
 | V1 Tamil / Hindi, 1-region synthetic images | ~0.4 s |
-| V2 auto mode | roughly the sum of the three engine times; per-engine means in 10.5 |
+| V2 auto mode | 13.3 s per image (median over 150 images; sum of the three engines: 3.0 + 5.2 + 5.1 s) |
 
 ### 10.7 Vendor-reported accuracy (context only)
 
@@ -663,9 +743,19 @@ the real-handwriting results above and the large gap was not diagnosed.
 | `legacy_v1/tests/test_boxes.py` | 12 | `clamp_box`, `pad_and_clamp_box` |
 | `legacy_v1/tests/test_east_detector.py` | 1 | missing image -> `FileNotFoundError` |
 
-Not unit-tested: file/crop writing in `run_pipeline`, FastAPI endpoints, the frontend. These were
-verified by live requests (all three languages, crops, health, research endpoint,
-invalid script, traversal attempt, frontend load).
+Not unit-tested: file/crop writing in `run_pipeline`, FastAPI endpoints. These were verified by live
+requests (all three languages in auto and manual mode, crops, health, research and sample endpoints,
+invalid script, traversal attempt).
+
+**UI tests (outside `pytest`):** `webapp/ui_tests/ui_test.py` drives an installed Edge/Chrome through
+Playwright against `webapp/ui_tests/mock_server.py` and checks 32 behaviours: status pill, sample
+load, loading state, detected chip, line rendering, low-confidence marking, re-run buttons,
+overlay/row hover linking, clipboard copy, download, theme switch, research tab, Tamil rendering
+(`lang="ta"`), cancel, server-error and network-failure states, no horizontal overflow at 390 px
+wide, no console errors. All pass. The UI was also driven against the real server with real
+models (no console errors; auto-detect chips correct for the sample page and a Hindi word). Setup:
+`pip install playwright` (uses the installed browser), then `python webapp/ui_tests/mock_server.py`
+and `python webapp/ui_tests/ui_test.py`. Not tested: Firefox/Safari, screen readers.
 
 ---
 
@@ -824,7 +914,11 @@ copied directly.
 synthetic-pilot values (7.1% Hindi, 25.9% Tamil) — caption must state units differ.
 7. Line chart of Tamil CER vs padding (10.1 table). 8. Latin-leakage grouped bars (10.4).
 9. Script-ID confusion matrix (10.5). 10. Latency bar chart V1 vs V2 (10.6).
-11. UI screenshots (user mode, dev mode, Research tab) — capture from the running demo.
+11. UI screenshots — already captured in `docs/figures/` (local; see `docs/figures/README.md` for what each shows and
+which are real-model vs mock-API captures): `ui_real_01_english_auto_simple.png`, `ui_real_02_english_auto_developer.png`
+(boxes + evidence bars), `ui_real_03_hindi_auto_simple.png`, `ui_real_04_tamil_manual_simple.png`,
+`ui_real_05_research_light.png`, plus mock-API captures of the empty/loading/error states, the dark theme and the phone
+layout (`ui_01` ... `ui_11`).
 
 ### 17.2 Tables to include
 
@@ -868,12 +962,13 @@ fragments, V2 16 lines).
 ├── webapp/
 │   ├── app.py                    FastAPI backend
 │   ├── static/index.html         single-file UI
+│   ├── ui_tests/                 mock API + Playwright UI test (not part of pytest)
 │   └── README.md
 ├── tests/                        20 production tests (+ README.md)
 ├── legacy_v1/                    V1 (EAST, grouping, classifier, TrOCR/ocr_tamil/EasyOCR) + 21 tests + README.md
 ├── input/images/sample.png       sample English page
 ├── models/                       EAST weights (V1 only, gitignored)
-├── docs/                         local-only research docs (see 18.2)
+├── docs/                         local-only research docs (see 18.2); docs/figures/ = UI screenshots
 ├── experiments/                  local-only evaluation data/scripts/reports (+ README.md)
 └── requirements*.txt             production / dev / webapp / legacy
 ```

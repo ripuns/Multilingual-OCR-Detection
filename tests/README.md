@@ -38,6 +38,10 @@ scripts in `experiments/runs/` and by live requests against the web app.
 - `test_east_detector.py` (1) — missing image raises `FileNotFoundError` (constructs the
   detector via `__new__` to avoid loading the model file).
 
+## UI tests
+The web UI has its own Playwright-based test in `webapp/ui_tests/` (mock API + 32 checks); it is not collected by
+`pytest` because it needs a browser. See `webapp/README.md`.
+
 ## Summary
 41 tests, all passing at the time of writing. Not covered by unit tests: file/crop writing in
 `run_pipeline`, the FastAPI endpoints, and the frontend.

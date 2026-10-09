@@ -103,7 +103,11 @@ RESEARCH_FINDINGS = {
         {"script": "Tamil", "with_latin": "17/30", "cer_with": 0.912, "cer_without": 0.461},
         {"script": "Hindi", "with_latin": "2/30", "cer_with": 1.167, "cer_without": 0.455},
     ],
-    "script_id": None,
+    "script_id": {
+        "design": {"n": 90, "accuracy": 0.767, "per_script": "English 28/30 / Tamil 15/30 / Hindi 26/30"},
+        "heldout": {"n": 60, "accuracy": 0.783, "per_script": "English 20/20 / Tamil 10/20 / Hindi 17/20"},
+        "note": "Current rule (argmax + Indic override). First argmax rule: 65.3% overall (held-out 70.0%). The current rule was revised before the evaluation, so its held-out figure is not a clean unseen-data estimate. Handwritten Tamil is the weak case: the Tamil engine often emits no Tamil at all, so choose Tamil manually when you know it.",
+    },
     "vendor_benchmarks": {
         "english": {"value": 0.8525, "model": "en_PP-OCRv5_mobile_rec (this project's English pipeline uses PP-OCRv6, so this is NOT the model in use)"},
         "tamil": {"value": 0.942, "model": "ta_PP-OCRv5_mobile_rec"},
@@ -167,6 +171,17 @@ async def ocr(file: UploadFile = File(...), script: str = Form("auto")):
         "elapsed_seconds": round(elapsed, 2),
         "was_warm": was_warm,
     })
+
+
+SAMPLE_IMAGE = os.path.join(os.path.dirname(BASE_DIR), "input", "images", "sample.png")
+
+
+@app.get("/api/sample")
+def sample():
+    """The repository's fixed sample page, so the UI can offer a one-click demo."""
+    if not os.path.isfile(SAMPLE_IMAGE):
+        raise HTTPException(status_code=404, detail="sample image not available")
+    return FileResponse(SAMPLE_IMAGE, media_type="image/png")
 
 
 @app.get("/api/crop/{run_id}/{filename}")

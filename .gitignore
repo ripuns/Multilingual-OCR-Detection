@@ -7,3 +7,4 @@ docs/
 experiments
 webapp/uploads/
 uvicorn_log.txt
+uvicorn_err.txt
