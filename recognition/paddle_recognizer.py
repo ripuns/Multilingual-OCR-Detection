@@ -2,8 +2,19 @@ from recognition.registry import register
 
 LANG_CODES = {"english": "en", "tamil": "ta", "hindi": "hi"}
 
-for _script, _code in LANG_CODES.items():
-    register(_script, f"PaddleOCR PP-OCRv5 ({_code})")
+# Which model family PaddleOCR selects per language is decided inside
+# paddleocr==3.7.0 (see PaddleOCR._get_ocr_model_names): English resolves to the
+# unified PP-OCRv6 medium det+rec models, Tamil/Devanagari to PP-OCRv5
+# (ta_PP-OCRv5_mobile_rec / devanagari_PP-OCRv5_mobile_rec + PP-OCRv5_server_det).
+# Re-verify these labels if the paddleocr pin changes.
+ENGINE_LABELS = {
+    "english": "PaddleOCR PP-OCRv6 (en)",
+    "tamil": "PaddleOCR PP-OCRv5 (ta)",
+    "hindi": "PaddleOCR PP-OCRv5 (hi)",
+}
+
+for _script, _label in ENGINE_LABELS.items():
+    register(_script, _label)
 
 
 class PaddleOcrRecognizer:
@@ -41,7 +52,7 @@ class PaddleOcrRecognizer:
     def detect_and_recognize(self, image_path):
         """Returns a list of {bbox: [x1,y1,x2,y2], text, score, route} for the whole image."""
         ocr = self._load()
-        route = f"PaddleOCR PP-OCRv5 ({self.lang_code})"
+        route = ENGINE_LABELS[self.script]
 
         results = []
         index = 0

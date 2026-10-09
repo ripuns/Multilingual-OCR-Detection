@@ -4,7 +4,7 @@ import os
 import yaml
 
 DEFAULTS = {
-    "script": "english",
+    "script": "auto",
     "paths": {"input": "input/images/sample.png", "output_dir": "output"},
     "logging": {"level": "INFO"},
 }

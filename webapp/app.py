@@ -20,7 +20,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
-ALLOWED_SCRIPTS = {"english", "tamil", "hindi"}
+ALLOWED_SCRIPTS = {"auto", "english", "tamil", "hindi"}
 
 _WARM = {"english": False, "tamil": False, "hindi": False, "done": False}
 
@@ -59,53 +59,63 @@ def health():
 # independent of markdown formatting.
 RESEARCH_FINDINGS = {
     "claim": (
-        "This project produced two linked findings, not one invented mechanism. "
-        "V1: a modular OCR pipeline's detector fails differently, and to "
-        "different degrees, when extended to a script it wasn't built for -- a "
-        "measured severity gradient. V2: replacing that patchwork with a "
-        "unified, actively-maintained engine (PaddleOCR) fixes the detection "
-        "failures -- but evaluating it against real, independently-sourced "
-        "handwriting (not synthetic renders) shows official/synthetic OCR "
-        "benchmarks substantially overestimate real-world accuracy, and a real "
-        "script-difficulty gradient persists even with a strong, unified backend."
+        "This project produced linked engineering findings, not a new algorithm. "
+        "V1: a modular OCR pipeline's detector failed differently depending on the "
+        "script it was extended to (a grouping bug for English, under-sized boxes "
+        "for Tamil, no boxes at all for Hindi). V2: one PaddleOCR engine per language "
+        "removed those detection failures, but on real third-party handwriting the "
+        "engines still make many errors, notably Latin-letter 'script leakage' by the "
+        "Tamil engine. A clean synthetic pilot had made accuracy look far better than "
+        "it is on real data."
     ),
     "v1_gradient": [
         {
             "script": "English",
             "detector": "EAST (legacy_v1)",
             "detection_succeeds": "Yes",
-            "failure_mode": "Was a grouping bug (fixed); now none observed",
+            "failure_mode": "Grouping bug clipped text (fixed)",
             "metric_value": "19/32 lines recovered clipped text after fix (qualitative)",
             "mitigated": "Fixed at the source",
         },
         {
             "script": "Tamil",
             "detector": "EAST (legacy_v1)",
-            "detection_succeeds": "Yes, but under-sized",
-            "failure_mode": "Systematic trailing-edge clipping",
-            "metric_value": "46.3% -> 25.9% CER with 20px box padding (synthetic pilot)",
+            "detection_succeeds": "Yes, but boxes too small",
+            "failure_mode": "Recognized text truncated",
+            "metric_value": "46.3% -> 25.9% CER with 20px box padding (5 synthetic images)",
             "mitigated": "Partially, via box padding",
         },
         {
             "script": "Hindi",
             "detector": "EAST (legacy_v1)",
-            "detection_succeeds": "No -- zero boxes at any tested confidence",
-            "failure_mode": "N/A for EAST; required a full detector swap",
-            "metric_value": "7.1% CER post-swap, via EasyOCR's own detector (synthetic pilot)",
+            "detection_succeeds": "No -- zero boxes (1 synthetic image, 2 thresholds)",
+            "failure_mode": "Nothing detected; backend swapped",
+            "metric_value": "7.1% CER via EasyOCR's own detector (5 synthetic images)",
             "mitigated": "Fixed by swapping detectors",
         },
     ],
     "v2_real_data": [
-        {"script": "English", "dataset": "Teklia/IAM-line (real handwriting)", "n": 30, "cer": 0.241, "exact_match": "0/30", "synthetic_cer": None},
-        {"script": "Hindi", "dataset": "IIIT-INDIC-HW-WORDS-Hindi (real handwriting)", "n": 30, "cer": 0.477, "exact_match": "2/30", "synthetic_cer": 0.071},
-        {"script": "Tamil", "dataset": "IIIT-INDIC-HW-WORDS-Tamil (real handwriting)", "n": 30, "cer": 0.711, "exact_match": "1/30", "synthetic_cer": 0.259},
+        {"script": "English", "dataset": "Teklia/IAM-line", "unit": "sentence line", "mean_len": 60.9, "n": 30, "cer": 0.241, "exact_match": "0/30", "synthetic_cer": None},
+        {"script": "Hindi", "dataset": "IIIT-INDIC-HW-WORDS-Hindi", "unit": "word", "mean_len": 6.4, "n": 30, "cer": 0.477, "exact_match": "2/30", "synthetic_cer": 0.071},
+        {"script": "Tamil", "dataset": "IIIT-INDIC-HW-WORDS-Tamil", "unit": "word", "mean_len": 9.6, "n": 30, "cer": 0.711, "exact_match": "1/30", "synthetic_cer": 0.259},
     ],
-    "official_benchmarks": {"english": 0.8525, "tamil": 0.942, "hindi": 0.8496},
+    "leakage": [
+        {"script": "Tamil", "with_latin": "17/30", "cer_with": 0.912, "cer_without": 0.461},
+        {"script": "Hindi", "with_latin": "2/30", "cer_with": 1.167, "cer_without": 0.455},
+    ],
+    "script_id": None,
+    "vendor_benchmarks": {
+        "english": {"value": 0.8525, "model": "en_PP-OCRv5_mobile_rec (this project's English pipeline uses PP-OCRv6, so this is NOT the model in use)"},
+        "tamil": {"value": 0.942, "model": "ta_PP-OCRv5_mobile_rec"},
+        "hindi": {"value": 0.8496, "model": "devanagari_PP-OCRv5_mobile_rec"},
+    },
     "caveats": [
-        "All real-data numbers are from n=30 samples per non-English language -- a real signal, not a statistically robust benchmark.",
-        "Why PaddleOCR's official Tamil benchmark (94.2%) diverges so sharply from this project's real-handwriting measurement (71.1% CER) was not isolated.",
-        "V1's findings remain valid descriptions of that architecture's failure modes; V1 is superseded as the production path, not 'wrong.'",
-        "A patent claim was investigated and explicitly dropped as not viable -- see docs/patent_ip_assessment.md. This is a paper-track, engineering/evaluation contribution, not a novel algorithm.",
+        "The three CERs are NOT comparable across languages: English is scored on ~61-character sentence lines, Tamil/Hindi on 6-10-character isolated words, from different datasets and writers. No claim about which script is harder is supported.",
+        "n=30 per language, first rows of each dataset (not random); no confidence intervals. CER counts Unicode code points, which penalizes Tamil/Devanagari more than a grapheme-level metric would.",
+        "The synthetic-vs-real comparison mixes an engine change (V1 -> V2) with a data change; it supports a caution about clean synthetic pilots, not a clean estimate of a synthetic-to-real gap.",
+        "Vendor benchmark figures were measured by PaddleOCR on its own test sets with specific PP-OCRv5 mobile models; they are context, not a comparison point.",
+        "V1 was never run on the real datasets, so V2 is not claimed to be more accurate than V1 on the same data.",
+        "A patent claim was investigated and dropped (see docs/patent_ip_assessment.md). Script identification is an established problem; this implementation is a usability feature, not a novelty claim.",
     ],
 }
 
@@ -116,7 +126,7 @@ def research():
 
 
 @app.post("/api/ocr")
-async def ocr(file: UploadFile = File(...), script: str = Form("english")):
+async def ocr(file: UploadFile = File(...), script: str = Form("auto")):
     if script not in ALLOWED_SCRIPTS:
         raise HTTPException(status_code=400, detail=f"script must be one of {sorted(ALLOWED_SCRIPTS)}")
 
@@ -134,23 +144,25 @@ async def ocr(file: UploadFile = File(...), script: str = Form("english")):
     config = load_config("config.yaml")
     config["script"] = script
 
-    was_warm = _WARM.get(script, False)
+    was_warm = _WARM["done"] if script == "auto" else _WARM.get(script, False)
     start = time.monotonic()
     try:
-        results = run_pipeline(input_path, run_dir, config)
+        outcome = run_pipeline(input_path, run_dir, config)
+        results, detection = outcome["results"], outcome["detection"]
     except FileNotFoundError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Pipeline error: {e}")
     elapsed = time.monotonic() - start
-    _WARM[script] = True
 
     for r in results:
         r["crop_url"] = f"/api/crop/{run_id}/{r['index']}.png"
 
     return JSONResponse({
         "run_id": run_id,
-        "script": script,
+        "requested_script": script,
+        "script": detection["script"],
+        "detection": detection,
         "results": results,
         "elapsed_seconds": round(elapsed, 2),
         "was_warm": was_warm,

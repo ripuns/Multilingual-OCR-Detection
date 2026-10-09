@@ -27,6 +27,6 @@ def test_all_three_scripts_registered_on_import():
 def test_registered_routes_identify_paddleocr_with_correct_lang_code():
     import recognition.paddle_recognizer  # noqa: F401
 
-    assert registry.get_route("english") == "PaddleOCR PP-OCRv5 (en)"
+    assert registry.get_route("english") == "PaddleOCR PP-OCRv6 (en)"
     assert registry.get_route("tamil") == "PaddleOCR PP-OCRv5 (ta)"
     assert registry.get_route("hindi") == "PaddleOCR PP-OCRv5 (hi)"

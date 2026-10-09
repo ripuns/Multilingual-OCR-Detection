@@ -1,4 +1,4 @@
-script: english
+script: auto
 
 paths:
   input: input/images/sample.png

@@ -1,35 +1,39 @@
 # webapp/
 
 ## What
-A FastAPI backend + single-page web UI wrapping `main.py`'s pipeline for a
-live, interactive OCR demo.
+A FastAPI backend and a single-file web UI around `main.run_pipeline`, for live
+demonstration.
 
 ## Why
-Lets a judge/reviewer upload a real image and see results immediately,
-without using the CLI, and gives the research findings a visible home instead
-of being buried in `docs/`.
+Lets a reviewer upload an image and see results without the CLI, and gives the research
+findings a visible home (Research tab).
 
 ## How
-- `app.py` — FastAPI app. Pre-warms all 3 language models at startup
-  (`lifespan`) so the first real request isn't slow. `/api/ocr` (POST,
-  multipart file + `script` field) runs the pipeline and returns structured
-  results with a `crop_url` per region. `/api/crop/{run_id}/{n}.png` serves
-  the cropped region images (path-validated against a strict regex).
-  `/api/research` returns the V1-vs-V2 research findings as JSON, duplicated
-  from `docs/research_contribution.md` (not parsed from the markdown) so the
-  frontend has a stable shape to render.
-- `static/index.html` — single-file frontend (no build step, no framework).
-  Two toggle states: **User mode** (clean text + Copy/Share) and **Dev mode**
-  (bounding boxes, crops, per-region confidence score). A **Research** tab
-  renders `/api/research`'s data as readable tables/bars.
-- `uploads/` — per-request working directory (`{run_id}/input.*`,
-  `cropped/*.png`, `ocr_results.*`), gitignored, not meant to persist.
+Run: `pip install -r requirements-webapp.txt` then
+`uvicorn webapp.app:app --host 127.0.0.1 --port 8000`, open `http://127.0.0.1:8000`.
+
+- `app.py` — FastAPI app.
+  - `lifespan` startup calls `main.warm_up()` (loads English, Tamil and Hindi engines) so the
+    first request is fast; `/api/health` exposes the warm state.
+  - `POST /api/ocr` (multipart `file` + `script` in `auto|english|tamil|hindi`, default `auto`)
+    saves the upload to `uploads/{run_id}/input.<ext>` (extension whitelisted; the client
+    filename is never used), runs the pipeline and returns `{run_id, requested_script, script,
+    detection, results[], elapsed_seconds, was_warm}`; each result has a `crop_url`.
+  - `GET /api/crop/{run_id}/{n}.png` — strict regex validation on both parameters.
+  - `GET /api/research` — hand-maintained JSON copy of the research findings for the UI.
+  - Static files served from `static/`.
+- `static/index.html` — no build step. Script buttons (**Auto-detect** default, English, Tamil,
+  Hindi), **User mode** (combined recognized text, Copy/Share) and **Dev mode** (per-region
+  crops, confidence pill, engine label), a **detected-script chip** after auto runs (or a
+  warning when no readable text was found), and a **Research** tab that renders
+  `/api/research` (V1 failure table, real-data CER bars, vendor benchmarks, caveats).
+- `uploads/` — per-request working directory (gitignored, never cleaned automatically).
 
 ## Structure
 - `app.py`
 - `static/index.html`
+- `uploads/` (runtime)
 
 ## Summary
-Deliberately thin: no auth, no database, no deployment config — a demo
-surface for `main.py`'s pipeline, not a separate product. Run with:
-`pip install -r requirements-webapp.txt && uvicorn webapp.app:app --host 127.0.0.1 --port 8000`.
+Deliberately thin: no authentication, database, rate limiting, upload-size limit or
+deployment configuration; CORS is `*`. Full API reference: `docs/architecture.md` Section 3.1.
