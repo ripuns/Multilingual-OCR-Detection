@@ -52,7 +52,7 @@ one (V2) is reproducible.
 | Runtime | CPU-only, single process; all three models warm-loaded at web-server start |
 | Measured real-data accuracy (30 images each) | English 24.1% CER (sentence lines), Hindi 47.7% (words), Tamil 71.1% (words) — **not comparable across languages** |
 | Script identification accuracy | see [Section 10.5](#105-automatic-script-identification-accuracy) |
-| Tests | 38 passing (17 production + 21 legacy), no models/network needed |
+| Tests | 41 passing (20 production + 21 legacy), no models/network needed |
 | Language / platform | Python 3.11.4, Windows 11 (developed and measured on AMD Ryzen 5 5625U, 15.3 GB RAM, no GPU) |
 | Codebase size | ~150 lines `main.py`, ~60 `paddle_recognizer.py`, ~40 `script_detector.py`, ~170 `webapp/app.py`, ~590 `webapp/static/index.html` |
 | Previous architecture | `legacy_v1/` (EAST + grouping + classifier + TrOCR / ocr_tamil / EasyOCR), preserved, runnable, tested |
@@ -149,7 +149,7 @@ one-time model weight download).
 | Entry points | `main.py` (CLI), `webapp/app.py` (HTTP) | parse input, call `run_pipeline`, return results |
 | Orchestration | `main.py`: `recognize()`, `run_pipeline()` | manual vs auto mode, crops, output files |
 | Recognition | `recognition/paddle_recognizer.py` | one `PaddleOcrRecognizer(script)` wraps one PaddleOCR detection+recognition pipeline |
-| Script identification | `recognition/script_detector.py` | pure functions: in-script glyph mass, argmax |
+| Script identification | `recognition/script_detector.py` | pure functions: in-script glyph mass, argmax with an Indic override at >= 25% share |
 | Registry | `recognition/registry.py` | name -> engine label map |
 | Configuration | `config.py`, `config.yaml` | `script`, `paths`, `logging` with defaults merge |
 | Frontend | `webapp/static/index.html` | script chooser, user/dev modes, detected-script chip, research tab |
@@ -161,7 +161,7 @@ one-time model weight download).
 - Created with `use_doc_orientation_classify=False`, `use_doc_unwarping=False`,
   `use_textline_orientation=False` (avoids loading extra document-preprocessing models)
   and `enable_mkldnn=False` (workaround for a PaddlePaddle/oneDNN crash, [Section 8.4](#84-environment-and-platform-notes)).
-- Returns `[{index, bbox:[x1,y1,x2,y2], text, score, route}]`.
+- Returns `[{index, bbox:[x1,y1,x2,y2], text, score, route}]`, sorted into reading order by `sort_reading_order`: regions are grouped into lines (two regions share a line when their vertical centres differ by at most half the first region's box height), lines are ordered top-to-bottom, regions left-to-right within a line, and `index` is re-numbered. This fixes PaddleOCR emitting a word before its left neighbour on the same line (e.g. `सूत्र` before `क्षार`).
 - Which model family each language gets is chosen **inside PaddleOCR**, verified from
   its source and model-creation logs: English -> `PP-OCRv6_medium_det/rec`; Tamil ->
   `PP-OCRv5_server_det` + `ta_PP-OCRv5_mobile_rec`; Hindi -> `PP-OCRv5_server_det` +
@@ -220,7 +220,7 @@ Region (`ocr_results.json` is a list of these; `crop_url` is added only by the w
 
 | Field | Type | Meaning |
 |---|---|---|
-| `index` | int | reading-order index within the image as returned by PaddleOCR |
+| `index` | int | position in reading order: regions are sorted into lines top-to-bottom, then left-to-right within a line (`sort_reading_order`), and `index` is re-numbered after sorting |
 | `bbox` | `[x1,y1,x2,y2]` ints | axis-aligned box in original image pixels |
 | `text` | string | recognized text of the region |
 | `score` | float 0-1 | PaddleOCR recognition confidence (4 decimals) |
@@ -311,10 +311,14 @@ Digits, spaces and punctuation are ignored (script-neutral).
 ```
 for each script s with recognized regions (text_i, score_i):
     mass(s) = sum_i  score_i * |{ c in text_i : c in block(s) }|
-winner = argmax_s mass(s)
-share  = mass(winner) / sum_s mass(s)            # how concentrated the evidence is
-if sum_s mass(s) == 0:  winner = None  ->  pipeline uses "english", fallback = true
-result = winner's regions (reused; no second recognition pass)
+total   = sum_s mass(s)
+winner  = argmax_s mass(s)
+# Indic override (added after the first version, see 6.4):
+best_indic = argmax over {tamil, hindi} of mass
+if mass(best_indic) / total >= 0.25:  winner = best_indic
+share   = mass(winner) / total                      # how concentrated the evidence is
+if total == 0:  winner = None  ->  pipeline uses "english", fallback = true
+result  = winner's regions (reused; no second recognition pass)
 ```
 
 ```mermaid
@@ -325,26 +329,54 @@ flowchart TD
     E3 --> M3[mass_hi = sum score x #Devanagari chars]
     M1 & M2 & M3 --> T{total mass > 0 ?}
     T -- no --> FB[fallback: english, fallback=true]
-    T -- yes --> W[winner = argmax; share = winner/total]
+    T -- yes --> A[winner = argmax mass]
+    A --> O{best Indic script holds >= 25% of total mass?}
+    O -- yes --> W[winner = that Indic script]
+    O -- no --> W2[keep argmax winner]
     W --> R[reuse winner's regions as the result]
+    W2 --> R
     FB --> R
 ```
 
-Implementation: `recognition/script_detector.py` (`script_mass`, `pick_script`) — pure
+Implementation: `recognition/script_detector.py` (`script_mass`, `pick_script`,
+constants `INDIC_SCRIPTS = ("tamil", "hindi")` and `INDIC_MIN_SHARE = 0.25`) — pure
 functions, unit-tested without any model; orchestration in `main.recognize()`.
+`share` reported for the winner is `mass(winner) / total`, so with the override it can be
+below 0.5 (an Indic winner chosen at 25-50% share).
 
 ### 6.3 Known properties and limits
 
 - **Cost:** about 3x the compute of manual mode (three engines). Manual mode runs one.
-- **One script per image:** mixed-script documents get a single script; the other
-  script's text is dropped or garbled. No per-region identification.
+- **One script per image:** mixed-script documents get a single script and one engine's
+  reading. The Indic engines also read Latin words (so a Hindi page with English words
+  is read in full by the Hindi engine), but the English engine garbles Indic text, so an
+  English-script winner on such a page loses the Indic text. There is no per-region
+  script identification.
 - **Script leakage weakens the signal** (Section 10.4): on hard handwritten Tamil the Tamil
   engine often emits Latin letters, which add to the *English* engine's mass rather than
-  Tamil's. Accuracy is reported honestly in Section 10.5.
+  Tamil's, so such Tamil images can be identified as English. The measured accuracy is in
+  Section 10.5.
+- **The Indic override has a cost:** if an Indic engine produces >= 25% of the mass from
+  garbage characters on an image that is really English, the image is misrouted to the Indic
+  script. How often this happens on the evaluation images is measured in Section 10.5.
 - **Blank or symbol-only images:** no evidence -> English fallback, flagged.
 - **Only three scripts;** other languages in the same scripts are not distinguished
   (Marathi/Nepali in Devanagari would be reported as `hindi`).
 - It is **not** a novelty claim: script identification for OCR is an established problem.
+
+### 6.4 How the rule evolved
+
+1. **First version (argmax):** the script with the largest glyph mass wins. Unit-tested and
+   evaluated as the baseline.
+2. **Indic override (author's later commit `ec77275`):** auto-detect chose English on a real
+   Hindi poster containing English words, because the English engine turns Devanagari into
+   Latin garbage that inflates English mass while the Hindi engine reads both scripts. The
+   override lets an Indic script win once it holds >= 25% of the total mass. The 25%
+   threshold is a hand-chosen constant, not fitted on the evaluation data (as far as the
+   record shows); two unit tests cover it (Indic wins on a mixed poster; English kept when the
+   Indic share is small).
+3. **Evaluation reports both rules** (Section 10.5) because the second rule was introduced
+   before the evaluation ran, so its held-out figure is not a clean unseen-data estimate.
 
 ---
 
@@ -397,7 +429,7 @@ kept (not deleted) so the V1-vs-V2 comparison is reproducible.
 | `recognition/paddle_recognizer.py` | PaddleOCR wrapper per language |
 | `recognition/script_detector.py` | script identification scoring |
 | `webapp/app.py`, `webapp/static/index.html` | web API and UI |
-| `tests/` | 17 production tests |
+| `tests/` | 20 production tests |
 | `legacy_v1/` | V1 code, tests, config, README |
 | `requirements*.txt` | `requirements.txt` (production), `-dev` (pytest, datasets), `-webapp` (FastAPI, uvicorn), `-legacy` (V1 stack) |
 | `experiments/runs/` | evaluation scripts, data and reports (gitignored) |
@@ -474,8 +506,11 @@ from different datasets, writers and capture conditions.
 ### 9.4 Controls and gaps
 
 Controlled: one machine, fixed models, deterministic inference, fixed dataset order,
-the same CER code for all languages, a held-out split for the script-ID rule (rule
-frozen before evaluation, no fitted parameters). Not done: random sampling, repeated
+the same CER code for all languages, and a held-out split for script identification. The
+first (argmax) rule was fixed before any of the evaluation data was scored and has no fitted
+parameters; the current rule adds a hand-chosen 25% Indic-override threshold that was
+introduced before the evaluation ran, so both rules are reported and the current rule's
+held-out figure is not a clean unseen-data estimate. Not done: random sampling, repeated
 runs, confidence intervals, significance tests, grapheme-level CER, WER, comparison
 with other OCR engines, V1 on the real datasets.
 
@@ -616,13 +651,13 @@ the real-handwriting results above and the large gap was not diagnosed.
 
 ## 12. Testing
 
-`pytest tests/ legacy_v1/tests/ -q` -> **38 passed**, no model downloads or network.
+`pytest tests/ legacy_v1/tests/ -q` -> **41 passed**, no model downloads or network.
 
 | File | Tests | Covers |
 |---|---|---|
 | `tests/test_registry.py` | 4 | register/lookup, missing route, three scripts registered, exact engine labels |
-| `tests/test_paddle_recognizer.py` | 2 | lazy construction (model not loaded), invalid script -> `ValueError` |
-| `tests/test_script_detector.py` | 7 | Latin/Tamil/Devanagari glyph counting, confidence weighting, argmax, out-of-block garbage ignored, no-evidence cases |
+| `tests/test_paddle_recognizer.py` | 3 | lazy construction (model not loaded), invalid script -> `ValueError`, `sort_reading_order` (line grouping, left-to-right order, re-numbered `index`) |
+| `tests/test_script_detector.py` | 9 | Latin/Tamil/Devanagari glyph counting, confidence weighting, argmax, out-of-block garbage ignored, no-evidence cases, Indic override on a mixed Hindi+English poster, English kept when the Indic share is small |
 | `tests/test_main_recognize.py` | 4 | `main.recognize` orchestration with fake recognizers: auto picks the right script and reuses its regions, English fallback is flagged, manual runs only the chosen engine, masses/share reported |
 | `legacy_v1/tests/test_grouping.py` | 8 | grouping regression/adversarial cases (the left-drift cases fail on pre-fix code) |
 | `legacy_v1/tests/test_boxes.py` | 12 | `clamp_box`, `pad_and_clamp_box` |
@@ -733,7 +768,7 @@ abstracts, snippets), **not** as full papers; treat as pointers, not a literatur
 | 2026-08-27 | Grouping fix + tests; CLI/UTF-8 logging; pinned deps; config; registry; box clamping; JSON output | `e7ff323`, `6a1cbc8`, `57e4d62`, `aed56d7`, `4205eb2`, `02596e1`, `5b8aca8`, `7636214` |
 | 2026-10-09 | Tamil route (`ocr_tamil`); Hindi route (EasyOCR, self-detecting contract); padding + warm-up | `bdcfbaa`, `a1d61d2`, `bb47ce0` |
 | 2026-10-09 | V2: PaddleOCR rewrite, V1 moved to `legacy_v1/` | `e90636d` |
-| 2026-10-09 | Automatic script identification; documentation overhaul | (uncommitted at time of writing) |
+| 2026-10-09 | Automatic script identification (`d8f8290`); Indic-override rule + reading-order sort (`ec77275`); documentation overhaul | `d8f8290`, `ec77275` |
 
 Decision log with rationale, dead ends and corrections: `docs/project_history.md`.
 
@@ -744,6 +779,8 @@ Decision log with rationale, dead ends and corrections: `docs/project_history.md
 3. Latin "script leakage" was discovered and quantified.
 4. "Synthetic overestimates real" restated as an evaluation-practice caution (engine and data both changed).
 5. The script-ID evaluation runner was made incremental/resumable after a killed process lost an hour of work.
+6. The script-identification rule changed after it was first documented (Indic override, Section 6.4); the evaluation therefore reports both rules, and the "rule frozen before evaluation" statement was narrowed to the first rule.
+7. Latency reporting uses medians because two runs of the evaluation stalled for 36 minutes and ~3 hours (the laptop pausing), which would have made a mean meaningless.
 
 ### 16.3 Future work
 
@@ -809,7 +846,7 @@ inventory (12); limitations (15).
 
 3 languages; 3 PaddleOCR engines (English PP-OCRv6, Tamil/Hindi PP-OCRv5); auto detection
 by confidence-weighted in-script glyph mass; 150 real images for script-ID (30 design + 20
-held-out per language); 90 real images for CER (30 per language); 38 tests; CPU-only AMD
+held-out per language); 90 real images for CER (30 per language); 41 tests; CPU-only AMD
 Ryzen 5 5625U; V1 English 126.8 s vs V2 English 14.5 s on the same sample page (V1 32
 fragments, V2 16 lines).
 
@@ -832,7 +869,7 @@ fragments, V2 16 lines).
 │   ├── app.py                    FastAPI backend
 │   ├── static/index.html         single-file UI
 │   └── README.md
-├── tests/                        17 production tests (+ README.md)
+├── tests/                        20 production tests (+ README.md)
 ├── legacy_v1/                    V1 (EAST, grouping, classifier, TrOCR/ocr_tamil/EasyOCR) + 21 tests + README.md
 ├── input/images/sample.png       sample English page
 ├── models/                       EAST weights (V1 only, gitignored)
