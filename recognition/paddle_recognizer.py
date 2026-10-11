@@ -13,6 +13,9 @@ ENGINE_LABELS = {
     "hindi": "PaddleOCR PP-OCRv5 (hi)",
 }
 
+REC_MODEL_NAMES = {"english": "PP-OCRv6_medium_rec", "tamil": "ta_PP-OCRv5_mobile_rec",
+                   "hindi": "devanagari_PP-OCRv5_mobile_rec"}
+
 for _script, _label in ENGINE_LABELS.items():
     register(_script, _label)
 
@@ -24,18 +27,24 @@ class PaddleOcrRecognizer:
     recognition internally, so this is always self-detecting: one call per
     image, no separate grouping/clamping/classification stage needed."""
 
-    def __init__(self, script):
+    def __init__(self, script, rec_model_dir=None):
         if script not in LANG_CODES:
             raise ValueError(f"Unsupported script '{script}'. Supported: {sorted(LANG_CODES)}")
         self.script = script
         self.lang_code = LANG_CODES[script]
+        self.rec_model_dir = rec_model_dir  # optional fine-tuned recognition model (inference dir)
         self._ocr = None
 
     def _load(self):
         if self._ocr is None:
             from paddleocr import PaddleOCR
+            extra = {}
+            if self.rec_model_dir:
+                extra = {"text_recognition_model_dir": self.rec_model_dir,
+                         "text_recognition_model_name": REC_MODEL_NAMES[self.script]}
             self._ocr = PaddleOCR(
                 lang=self.lang_code,
+                **extra,
                 use_doc_orientation_classify=False,
                 use_doc_unwarping=False,
                 use_textline_orientation=False,

@@ -74,17 +74,26 @@ class H(BaseHTTPRequestHandler):
         script = m.group(1).decode() if m else "auto"
         time.sleep(1.8)
         if script == "tamil":
-            results, det = TAMIL, {"mode": "manual", "script": "tamil", "fallback": False, "share": None, "masses": None}
+            results, det = TAMIL, {"mode": "manual", "script": "tamil", "fallback": False, "share": None, "masses": None,
+                                   "suppressed": [{"text": "BODA", "score": 0.41, "bbox": [0, 90, 60, 120]}]}
         elif script == "hindi":
             results, det = HINDI, {"mode": "manual", "script": "hindi", "fallback": False, "share": None, "masses": None}
         elif script == "english":
             results, det = real, {"mode": "manual", "script": "english", "fallback": False, "share": None, "masses": None}
+        elif script == "mixed":
+            results = [dict(r, script="english", band=0) for r in real[:6]] + [
+                dict(TAMIL[0], index=6, bbox=[0, 700, 224, 760], band=1), dict(HINDI[0], index=7, bbox=[0, 800, 120, 860], band=2)]
+            det = {"mode": "mixed", "script": "english", "fallback": False, "share": None, "masses": None,
+                   "bands": [{"y": [0, 600], "script": "english", "fallback": False, "probabilities": {"english": 0.98, "tamil": 0.01, "hindi": 0.01}},
+                             {"y": [700, 760], "script": "tamil", "fallback": False, "probabilities": {"english": 0.1, "tamil": 0.85, "hindi": 0.05}},
+                             {"y": [800, 860], "script": "hindi", "fallback": False, "probabilities": {"english": 0.05, "tamil": 0.02, "hindi": 0.93}}]}
         else:
             results, det = real, {"mode": "auto", "script": "english", "fallback": False, "share": 1.0,
-                                  "masses": {"english": 612.4, "tamil": 0.0, "hindi": 3.2}}
+                                  "masses": {"english": 612.4, "tamil": 0.0, "hindi": 3.2},
+                                  "probabilities": {"english": 0.97, "tamil": 0.02, "hindi": 0.01}}
         rs = [dict(r, crop_url=f"/api/crop/aabbccddeeff/{r['index']}.png") for r in results]
         self.send(200, {"run_id": "aabbccddeeff", "requested_script": script, "script": det["script"], "detection": det,
-                        "results": rs, "elapsed_seconds": 13.27 if script == "auto" else 3.1, "was_warm": True})
+                        "results": rs, "elapsed_seconds": 13.27 if script in ("auto", "mixed") else 3.1, "was_warm": True})
 
 
 ThreadingHTTPServer(("127.0.0.1", 8765), H).serve_forever()

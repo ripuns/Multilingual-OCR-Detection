@@ -319,6 +319,7 @@
             <label class="wide"><input type="radio" name="lang" value="auto" checked><span class="opt">
               <svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>
               Auto-detect <small>recommended</small></span></label>
+            <label><input type="radio" name="lang" value="mixed"><span class="opt">Mixed page <small>per line</small></span></label>
             <label><input type="radio" name="lang" value="english"><span class="opt">English</span></label>
             <label><input type="radio" name="lang" value="tamil"><span class="opt">Tamil <small>தமிழ்</small></span></label>
             <label><input type="radio" name="lang" value="hindi"><span class="opt">Hindi <small>हिन्दी</small></span></label>
@@ -422,6 +423,7 @@ const LABEL = { english: "English", tamil: "Tamil", hindi: "Hindi" };
 const LANG_ATTR = { english: "en", tamil: "ta", hindi: "hi" };
 const HINTS = {
   auto: "Reads the image with all three language models and picks the script. About 3× slower than choosing a language, and least reliable for handwritten Tamil.",
+  mixed: "For pages that mix scripts (for example a Hindi poster with English lines): all three models read the page and each text line gets its own script. Same cost as Auto-detect; a single line that itself mixes scripts still gets one script.",
   english: "Fastest option for English: runs one model.",
   tamil: "Runs only the Tamil model. Choose this when you know the text is Tamil.",
   hindi: "Runs only the Hindi (Devanagari) model.",
@@ -551,8 +553,9 @@ async function run(forceScript) {
   if (forceScript) { document.querySelector(`input[name="lang"][value="${forceScript}"]`).checked = true; updateHint(); }
   state.controller = new AbortController();
   $("run-btn").disabled = true;
-  $("loading-title").textContent = script === "auto" ? "Reading with all three language models…" : `Reading ${LABEL[script]} text…`;
-  $("loading-sub").textContent = script === "auto"
+  const multi = script === "auto" || script === "mixed";
+  $("loading-title").textContent = multi ? "Reading with all three language models…" : `Reading ${LABEL[script]} text…`;
+  $("loading-sub").textContent = multi
     ? "Auto-detect compares the English, Tamil and Hindi readings, so it takes noticeably longer than choosing a language."
     : "Detecting text regions and recognizing them.";
   show("loading");
@@ -612,11 +615,17 @@ function handleOutcome(data) {
 function renderChip(data) {
   const d = data.detection || {}, chip = $("detect-chip"); chip.innerHTML = "";
   const name = LABEL[data.script] || data.script;
-  if (d.mode === "auto" && d.fallback) chip.append(el("span", { class: "chip warn", text: "No readable text found — shown as English" }));
-  else if (d.mode === "auto") {
+  const spark = '<svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg>';
+  if ((d.mode === "auto" || d.mode === "mixed") && d.fallback && !(d.bands || []).some((b) => !b.fallback)) chip.append(el("span", { class: "chip warn", text: "No readable text found — shown as English" }));
+  else if (d.mode === "mixed") {
+    const used = [...new Set((d.bands || []).filter((b) => !b.fallback).map((b) => LABEL[b.script]))];
+    const c = el("span", { class: "chip" }); c.innerHTML = spark;
+    c.append(document.createTextNode(`Per-line scripts: ${used.join(" · ") || name}`)); chip.append(c);
+  } else if (d.mode === "auto") {
     const c = el("span", { class: "chip" });
-    c.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/></svg>';
-    c.append(document.createTextNode(`Detected script: ${name}`)); chip.append(c);
+    c.innerHTML = spark;
+    const p = d.probabilities && d.probabilities[data.script];
+    c.append(document.createTextNode(`Detected script: ${name}` + (p != null ? ` · ${Math.round(p * 100)}% likely` : ""))); chip.append(c);
   } else chip.append(el("span", { class: "chip manual", text: `Language: ${name}` }));
 }
 
@@ -626,7 +635,8 @@ function renderSimple(data) {
   if (!lines.length) out.append(el("span", { class: "small", text: "No text was found in this image." }));
   for (const l of lines) {
     const low = Math.min(...l.map((r) => r.score)) < 0.6;
-    out.append(el("span", { class: "ln" + (low ? " low" : ""), title: low ? "Low confidence — double-check this line" : "" }, l.map((r) => r.text).join(" ") || " "));
+    const ln = el("span", { class: "ln" + (low ? " low" : ""), title: low ? "Low confidence — double-check this line" : "", lang: LANG_ATTR[l[0].script] || LANG_ATTR[data.script] || "en" }, l.map((r) => r.text).join(" ") || " ");
+    out.append(ln);
   }
   const scores = data.results.map((r) => r.score);
   const mean = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
@@ -643,7 +653,14 @@ function renderSimple(data) {
     n.append(el("span", { text: `${lowN} ${lowN === 1 ? "line has" : "lines have"} low confidence (dotted underline). Handwriting in particular can be misread — please review.` }));
     notes.append(n);
   }
-  if (data.detection && data.detection.mode === "auto") {
+  const sup = (data.detection && data.detection.suppressed) || [];
+  if (sup.length) {
+    const n = el("div", { class: "notice" });
+    n.innerHTML = '<svg class="i" viewBox="0 0 24 24"><path d="M12 8v5m0 3.5v.01M10.3 3.9L2.4 17.6A2 2 0 004.1 20.6h15.8a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>';
+    n.append(el("span", { text: `${sup.length} unreadable ${sup.length === 1 ? "region was" : "regions were"} hidden: the ${LABEL[data.script]} model could only produce low-confidence Latin letters there. They may be handwriting it could not read.` }));
+    notes.append(n);
+  }
+  if (data.detection && (data.detection.mode === "auto" || data.detection.mode === "mixed")) {
     const row = el("div", { class: "rerun" }, "Not the right language?");
     for (const s of ["english", "tamil", "hindi"]) if (s !== data.script) {
       const b = el("button", { class: "btn", type: "button", text: `Read as ${LABEL[s]}` }); b.onclick = () => run(s); row.append(b);
@@ -670,9 +687,19 @@ function renderDev(data) {
         el("div", { class: "track" }, el("div", { class: "fill", style: `width:${Math.max(0, d.masses[s] / max * 100).toFixed(1)}%` })),
         el("span", { class: "v", text: d.masses[s].toFixed(1) })));
     }
+    const pr = d.probabilities;
     det.append(bars, el("p", { class: "small", style: "margin:8px 0 0", text: d.fallback
       ? "No script produced any readable characters, so English was used by default."
-      : "The script with the most evidence wins; Tamil or Hindi win once they hold at least 25% of the total. This is a heuristic, not a calibrated probability." }));
+      : pr
+        ? "Calibrated probability: " + ["english", "tamil", "hindi"].map((s) => `${LABEL[s]} ${Math.round(pr[s] * 100)}%`).join(" · ") + ". From a small classifier trained on 150 labelled outputs; probabilities on other kinds of images may be less reliable."
+        : "The script with the most evidence wins; Tamil or Hindi win once they hold at least 25% of the total. This is a heuristic, not a calibrated probability." }));
+  }
+  if (d.mode === "mixed" && d.bands) {
+    det.append(el("p", { class: "eyebrow", text: "Script chosen for each text line" }));
+    const bars = el("div", { class: "bars" });
+    d.bands.forEach((b, i) => bars.append(el("div", { class: "bar" }, el("span", { text: `Line ${i + 1}` }),
+      el("span", { class: "v", style: "min-width:auto;text-align:left", text: b.fallback ? "no readable text (English)" : (LABEL[b.script] + (b.probabilities ? ` · ${Math.round(b.probabilities[b.script] * 100)}%` : "")) }))));
+    det.append(bars);
   }
 
   $("dev-img").src = state.imageUrl;
@@ -775,20 +802,22 @@ function renderResearch(d) {
   const s1 = el("div", { class: "section" }, el("h2", { text: "Real-handwriting accuracy (character error rate, lower is better)" }));
   d.v2_real_data.forEach((r) => {
     s1.append(bar2(r.script, `${r.dataset} · ${r.unit}s, n=${r.n}`, r.cer, "real"));
+    if (r.stock_cer != null) s1.append(bar2("Stock Tamil model, before fine-tuning", "same 30 images", r.stock_cer, "synth", "indent"));
     if (r.synthetic_cer != null) s1.append(bar2("Earlier clean synthetic pilot", "5 images, not comparable", r.synthetic_cer, "synth", "indent"));
   });
   s1.append(el("p", { class: "small", text: "These three numbers use different test sets (English: sentence lines; Tamil and Hindi: isolated words) and must not be compared with each other." }));
   root.append(s1);
 
-  const sl = el("div", { class: "section" }, el("h2", { text: "Why Tamil fails: the engine sometimes answers in Latin letters" }));
+  const sl = el("div", { class: "section" }, el("h2", { text: "Why the stock Tamil model failed: it often answered in Latin letters" }));
   sl.append(table(["Engine", "Predictions containing Latin letters", "Error rate on those", "Error rate on the rest"],
     d.leakage.map((r) => [r.script, r.with_latin, pct(r.cer_with, 1), pct(r.cer_without, 1)])));
+  if (d.leakage_after_finetune) sl.append(el("p", { class: "small", style: "margin-top:8px", text: d.leakage_after_finetune }));
   root.append(sl);
 
   if (d.script_id) {
     const s = d.script_id, sec = el("div", { class: "section" }, el("h2", { text: "How well does auto-detect work?" }));
-    sec.append(table(["Split", "Images", "Accuracy", "Per script"],
-      [["Design", s.design.n, pct(s.design.accuracy, 1), s.design.per_script], ["Held-out", s.heldout.n, pct(s.heldout.accuracy, 1), s.heldout.per_script]]));
+    sec.append(table(["Evaluation", "Items", "Accuracy", "Detail"],
+      s.rows.map((r) => [r.split, r.n, pct(r.accuracy, 1), r.per_script])));
     sec.append(el("p", { class: "small", style: "margin-top:8px", text: s.note })); root.append(sec);
   }
 

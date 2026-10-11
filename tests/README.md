@@ -10,7 +10,7 @@ recognizer construction/validation, and the script-identification scoring rule.
 
 ## How
 ```
-pytest tests/ legacy_v1/tests/ -q        # expected: 41 passed (no model downloads, no network)
+pytest tests/ legacy_v1/tests/ -q        # expected: 60 passed (no model downloads, no network)
 ```
 
 No test loads PaddleOCR or EAST. Model-dependent behavior is checked by the evaluation
@@ -27,9 +27,15 @@ scripts in `experiments/runs/` and by live requests against the web app.
   confidence weighting, argmax selection, out-of-block garbage ignored, the Indic override
   (Hindi wins on a mixed Hindi+English poster; English kept when the Indic share is small), and
   the "no evidence" cases (`None`, share 0).
-- `test_main_recognize.py` (4) — `main.recognize` with fake recognizers: auto picks the right
+- `test_main_recognize.py` (9) — `main.recognize` with fake recognizers: auto picks the right
   script and reuses its regions (each engine runs once), English fallback is flagged, manual
-  runs only the chosen engine, masses/share are reported.
+  runs only the chosen engine, masses/share are reported, mixed mode chooses per line, leakage
+  suppression only when asked, calibrated selector reports probabilities, fine-tuned model dirs
+  honoured/ignored, classifier weights paired with the Tamil model.
+- `test_script_classifier.py` (6) — length-invariant features, empty flag, `None` only with no
+  text, out-of-script garbage still classified, probabilities sum to 1, shipped weights match.
+- `test_leakage.py` (5) — Latin garbage from Indic engines flagged; confident / own-script text kept.
+- `test_region_merge.py` (3) — line bands across engines, per-line scripts, English fallback.
 
 ## Structure (legacy, 21 tests, `legacy_v1/tests/`)
 - `test_grouping.py` (8) — grouping regression/adversarial cases; the left-drift cases
@@ -39,9 +45,9 @@ scripts in `experiments/runs/` and by live requests against the web app.
   detector via `__new__` to avoid loading the model file).
 
 ## UI tests
-The web UI has its own Playwright-based test in `webapp/ui_tests/` (mock API + 32 checks); it is not collected by
+The web UI has its own Playwright-based test in `webapp/ui_tests/` (mock API + 38 checks); it is not collected by
 `pytest` because it needs a browser. See `webapp/README.md`.
 
 ## Summary
-41 tests, all passing at the time of writing. Not covered by unit tests: file/crop writing in
+60 tests (39 production + 21 legacy), all passing at the time of writing. Not covered by unit tests: file/crop writing in
 `run_pipeline`, the FastAPI endpoints, and the frontend.

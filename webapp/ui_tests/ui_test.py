@@ -86,6 +86,11 @@ with sync_playwright() as p:
         page.click("#download-btn")
     check(dl.value.suggested_filename == "lekhak-text.txt", "Download .txt works")
 
+    check("97% likely" in page.inner_text("#detect-chip"), "auto chip shows the calibrated probability")
+    page.click("#mode-dev")
+    check("Calibrated probability" in page.inner_text("#dev-detect"), "developer view explains the calibrated probability")
+    page.click("#mode-simple")
+
     # re-run as another language
     page.click("#simple-notes .rerun button:nth-of-type(1)")
     page.wait_for_selector("#state-loading:not([hidden])")
@@ -93,6 +98,17 @@ with sync_playwright() as p:
     page.wait_for_selector("#state-result:not([hidden])", timeout=15000)
     check(page.inner_text("#detect-chip").startswith("Language:"), "manual run shows 'Language: …' chip")
     check(page.locator("#simple-notes .rerun").count() == 0, "no re-run row in manual mode")
+
+    # mixed page mode
+    page.check("input[name=lang][value=mixed]", force=True)
+    check("each text line" in page.inner_text("#lang-hint"), "mixed hint explains per-line scripts")
+    page.click("#run-btn")
+    page.wait_for_selector("#state-result:not([hidden])", timeout=15000)
+    chip_m = page.inner_text("#detect-chip")
+    check("Per-line scripts" in chip_m and "Tamil" in chip_m and "Hindi" in chip_m, f"mixed chip lists the scripts ({chip_m!r})")
+    page.click("#mode-dev")
+    check("script chosen for each text line" in page.inner_text("#dev-detect").lower(), "developer view lists the per-line scripts")
+    page.click("#mode-simple")
 
     # dark theme
     page.click("#theme-btn")
@@ -126,6 +142,7 @@ with sync_playwright() as p:
     page.click("#mode-simple")
     page.screenshot(path=f"{SHOTS}/09_tamil_simple_light.png")
     check("வணக்கம்" in page.inner_text("#text-out"), "Tamil text rendered")
+    check("hidden" in page.inner_text("#simple-notes"), "suppressed leakage notice shown for the Tamil run")
     check(page.get_attribute("#text-out", "lang") == "ta", "text block lang=ta for correct font shaping")
 
     # cancel

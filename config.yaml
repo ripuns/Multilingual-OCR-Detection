@@ -1,4 +1,8 @@
-script: auto
+script: auto            # auto | mixed | english | tamil | hindi
+selector: calibrated    # calibrated (learned) | rule (glyph-mass argmax + Indic override)
+suppress_leakage: true  # withhold Latin garbage from the Tamil/Hindi engines
+models:
+  tamil: models/ta_PP-OCRv5_mobile_rec_ft   # fine-tuned Tamil recogniser; remove to use the stock model
 
 paths:
   input: input/images/sample.png

@@ -45,16 +45,16 @@ one (V2) is reproducible.
 |---|---|
 | Languages / scripts | English (Latin), Tamil, Hindi (Devanagari) |
 | Recognition engine | PaddleOCR (`paddleocr==3.7.0`, `paddlepaddle==3.3.1`): English -> PP-OCRv6 medium det+rec; Tamil -> PP-OCRv5 server det + `ta_PP-OCRv5_mobile_rec`; Hindi -> PP-OCRv5 server det + `devanagari_PP-OCRv5_mobile_rec` |
-| Language selection | **Automatic by default** (`auto`), manual override `english` / `tamil` / `hindi` |
+| Language selection | **Automatic by default** (`auto`, one script per image), **`mixed`** (script chosen per text line), manual override `english` / `tamil` / `hindi`. The automatic choice uses a small **calibrated classifier** (probabilities), with the earlier glyph-mass rule kept as a fallback |
 | Interfaces | CLI (`main.py`), HTTP API + web UI (`webapp/`) |
 | Web UI | Single-file, dependency-free, light/dark, responsive: drag-drop/paste/"Try sample" upload, Auto-detect default, **Simple** view (text, Copy/Download/Share, low-confidence marking, "Read as <language>" re-run) and **Developer** view (boxes drawn on the image, evidence bars, regions table, raw JSON), Research tab |
 | Outputs | `ocr_results.json`, `ocr_results.txt`, `ocr_detection.json`, `cropped/*.png` |
 | Runtime | CPU-only, single process; all three models warm-loaded at web-server start |
-| Measured real-data accuracy (30 images each) | English 24.1% CER (sentence lines), Hindi 47.7% (words), Tamil 71.1% (words) — **not comparable across languages** |
-| Script identification accuracy (150 real images) | 77.3% overall: English 96%, Hindi 86%, Tamil 50% (first argmax rule: 65.3%); see [Section 10.5](#105-automatic-script-identification-accuracy) |
-| Tests | 41 passing (20 production + 21 legacy), no models/network needed |
+| Measured real-data accuracy (30 images each) | English 24.1% CER (sentence lines), Hindi 47.7% (words), Tamil **13.9%** with the fine-tuned Tamil recogniser (71.1% with the stock model) — **not comparable across languages**; the Tamil gain is adaptation to one handwriting source, see [Section 10.8](#108-fine-tuned-tamil-recogniser-c10) |
+| Script identification accuracy | **93.3% on 120 fresh, never-examined images** (English 36/40, Tamil 38/40, Hindi 38/40) with the calibrated classifier; 89.7% cross-validated on the earlier 150 images; the earlier hand-written rule scored 77.3% on those 150 (stock Tamil model) and fails with the fine-tuned Tamil model. Mixed pages: 59/60 lines correct. See [Sections 10.5 and 10.9–10.10](#109-script-identification-calibrated-classifier-vs-rules-c9) |
+| Tests | 60 passing (39 production + 21 legacy), no models/network needed; plus the Playwright UI test |
 | Language / platform | Python 3.11.4, Windows 11 (developed and measured on AMD Ryzen 5 5625U, 15.3 GB RAM, no GPU) |
-| Codebase size | ~150 lines `main.py`, ~100 `paddle_recognizer.py`, ~50 `script_detector.py`, ~200 `webapp/app.py`, ~814 `webapp/static/index.html` |
+| Codebase size | ~190 lines `main.py`, ~110 `paddle_recognizer.py`, ~50 `script_detector.py`, ~100 `script_classifier.py`, ~60 `region_merge.py`, ~30 `leakage.py`, ~215 `webapp/app.py`, ~850 `webapp/static/index.html` |
 | Previous architecture | `legacy_v1/` (EAST + grouping + classifier + TrOCR / ocr_tamil / EasyOCR), preserved, runnable, tested |
 | Author | Ripun, IT Engineering, VIT Vellore |
 
@@ -109,11 +109,16 @@ The contributions are **engineering and evaluation findings**, not a new algorit
 | C6 | A clean synthetic pilot made accuracy look far better than on real data (Hindi 7.1% vs 47.7%; Tamil 25.9% vs 71.1%) | V1 pilots vs V2 real-data runs | Supports an evaluation-practice caution only; engine and data both changed |
 | C7 | "Script leakage": the Tamil engine outputs Latin letters on 17/30 real images (CER 0.91 on those vs 0.46 on the rest); Hindi 2/30 | per-sample analysis of C5 outputs | Solid for this sample; mechanism not isolated |
 | C8 | Automatic script identification from recognizer outputs (argmax + Indic override), evaluated on 150 real images | 77.3% overall (English 96%, Hindi 86%, Tamil 50%); the Tamil misses are recognizer failures (no Tamil characters emitted) | Real signal, small n; works for English/Hindi, unreliable for handwritten Tamil; current rule's held-out figure not clean |
+| C9 | A small logistic-regression selector over length-invariant engine-output statistics (confidences, in-script and Latin fractions, mass shares) replaces the hand-set 25% rule and returns probabilities | 120 fresh images never used for design: 93.3% vs 74.2% (rule) and 55.8% (argmax); 89.7% cross-validated on the earlier 150 with the fine-tuned Tamil model, 91.4% with the stock model | Solid improvement on this data; n = 120, English scored on lines vs Indic words (a possible confound), no confidence intervals |
+| C10 | Fine-tuning only the SVTR neck and CTC head of `ta_PP-OCRv5_mobile_rec` (frozen backbone, cached features, 6,000 words, CPU) cut Tamil CER from 71.1% to 13.9% on the original 30 images (83.9% to 24.9% on 40 fresh images) and removed the Latin leakage (0/30 and 0/40) | `experiments/finetune/` outputs; stock vs fine-tuned on identical images | Real and large for this handwriting source; evaluation words come from the same dataset as the training words (different rows, probably shared writers), so generalization to other Tamil handwriting is **not** shown |
+| C11 | Per-line script identification for mixed-script pages | 20 stitched pages (60 lines): 59/60 lines correct with the calibrated selector (32/60 with the hand rule on the fine-tuned model; 20/60 for one script per page) | Synthetic pages built from word/line crops, single script per line; not a real mixed-script document benchmark |
+| C12 | Withholding low-confidence Latin output from the Indic engines | flags 96% of leaked regions and 6% of genuine Latin ones; CER barely moves (Tamil 71.1% to 70.4%, Hindi 47.7% to 47.2%) | Weak as an accuracy measure; useful as a presentation safeguard; moot for the fine-tuned Tamil model (no leakage) |
 
 **Explicitly not claimed:** a new algorithm; that V2 is more accurate than V1 on the
 same data (V1 was never run on the real datasets); that script difficulty orders as
 English < Hindi < Tamil (the English test set uses long lines, the others isolated
-words); that results generalize beyond the small samples; novelty of script
+words); that the Tamil fine-tune generalizes beyond the handwriting source it was trained on;
+that results generalize beyond the small samples; novelty of script
 identification (an established problem).
 
 ---
@@ -149,9 +154,12 @@ one-time model weight download).
 | Entry points | `main.py` (CLI), `webapp/app.py` (HTTP) | parse input, call `run_pipeline`, return results |
 | Orchestration | `main.py`: `recognize()`, `run_pipeline()` | manual vs auto mode, crops, output files |
 | Recognition | `recognition/paddle_recognizer.py` | one `PaddleOcrRecognizer(script)` wraps one PaddleOCR detection+recognition pipeline |
-| Script identification | `recognition/script_detector.py` | pure functions: in-script glyph mass, argmax with an Indic override at >= 25% share |
+| Script identification | `recognition/script_detector.py` | pure functions: in-script glyph mass, argmax with an Indic override at >= 25% share (the rule) |
+| Calibrated selection | `recognition/script_classifier.py` + `script_classifier_weights*.json` | 15 length-invariant features of the three engines' outputs -> multinomial logistic regression -> class probabilities; two weight files (stock Tamil model / fine-tuned Tamil model) |
+| Per-line mode | `recognition/region_merge.py` | groups all engines' detections into text-line bands and picks the script of each band |
+| Leakage handling | `recognition/leakage.py` | withholds low-confidence Latin-only output of the Tamil/Hindi engines |
 | Registry | `recognition/registry.py` | name -> engine label map |
-| Configuration | `config.py`, `config.yaml` | `script`, `paths`, `logging` with defaults merge |
+| Configuration | `config.py`, `config.yaml` | `script`, `selector`, `suppress_leakage`, `models`, `paths`, `logging` with defaults merge |
 | Frontend | `webapp/static/index.html` | single-file UI: upload, language chooser, simple/developer views, overlay, research tab |
 
 ### 4.3 PaddleOcrRecognizer
@@ -245,9 +253,11 @@ Detection info (`ocr_detection.json`, and `detection` in the API response):
 | `GET /api/health` | `{"status":"ok","warm":{english,tamil,hindi,done}}` |
 | `GET /api/research` | static research-findings JSON used by the Research tab |
 | `GET /api/sample` | the fixed sample page (`input/images/sample.png`), used by the UI's "Try sample" button |
-| `POST /api/ocr` | multipart: `file` (image), `script` (`auto` default / `english` / `tamil` / `hindi`) |
+| `POST /api/ocr` | multipart: `file` (image), `script` (`auto` default / `mixed` / `english` / `tamil` / `hindi`) |
 | `GET /api/crop/{run_id}/{n}.png` | cropped region image; `run_id` must match `[a-f0-9]{12}` and filename `\d+\.png`, else HTTP 400 |
 | `GET /` | static frontend |
+
+The `detection` object depends on the mode: `auto` adds `probabilities` (per-script, when the calibrated selector is used) next to `masses`/`share`; `mixed` returns `bands` (per text line: `y` range, `script`, `probabilities`, `fallback`) and each region carries its own `script` and `band`; a manual Tamil/Hindi run with `suppress_leakage` adds `suppressed` (withheld regions with text, score and box).
 
 Errors: unsupported `script` -> 400; unreadable image -> 400 (message from
 `FileNotFoundError`); other pipeline exception -> 500 `"Pipeline error: ..."`.
@@ -260,7 +270,11 @@ CORS is `*`; there is **no** authentication, rate limiting or upload size limit.
 `config.yaml` (merged over built-in defaults by `config.py`):
 
 ```yaml
-script: auto            # auto | english | tamil | hindi
+script: auto            # auto | mixed | english | tamil | hindi
+selector: calibrated    # calibrated (learned) | rule (glyph-mass argmax + Indic override)
+suppress_leakage: true  # withhold Latin garbage from the Tamil/Hindi engines
+models:
+  tamil: models/ta_PP-OCRv5_mobile_rec_ft   # fine-tuned Tamil recogniser; remove to use the stock model
 paths:
   input: input/images/sample.png
   output_dir: output
@@ -269,7 +283,12 @@ logging:
 ```
 
 CLI flags override config: `--config`, `--input`, `--output-dir`, `--script`
-(`auto|english|tamil|hindi`). In `auto` the CLI logs the detected script and its share.
+(`auto|mixed|english|tamil|hindi`). In `auto` the CLI logs the detected script and its share.
+`models.tamil` is ignored (with a warning) when the directory does not exist, in which case the
+stock Tamil model and the matching `base` classifier weights are used; with the directory present
+the fine-tuned model and the `ft` weights are used. **The two must stay paired**: the classifier was
+trained on the outputs of one specific Tamil model, and the `rule` selector fails with the
+fine-tuned model (it reads other scripts as Tamil).
 
 ### 5.5 Web UI behavior
 
@@ -302,6 +321,7 @@ offline), responsive down to ~390 px, light and dark themes (system default, sav
   the image with every region box drawn as an SVG overlay (green >= 0.85, amber >= 0.60, red
   below) with hover linking between boxes and table rows; a regions table with crop thumbnails
   and confidence pills; collapsible raw JSON with Copy JSON.
+- **Mixed page, probabilities, hidden garbage:** a fifth choice **Mixed page (per line)** runs all three models and chooses the script of every text line (chip "Per-line scripts: ..."; the Developer view lists the script and probability per line). After an auto run the chip shows the calibrated probability ("Detected script: Tamil · 73% likely") and the Developer view prints all three probabilities with the caveat that they come from a small classifier. A manual Tamil/Hindi run that withheld low-confidence Latin garbage shows a notice with the count.
 - **Honesty by design:** the UI does not show the winner `share` as a confidence (it is 1.0 whenever
   only one engine emits in-script characters, including when that winner is wrong, Section 10.5).
 - **Research tab:** renders `/api/research`: real-handwriting CER bars (with a note that the
@@ -372,6 +392,8 @@ below 0.5 (an Indic winner chosen at 25-50% share).
 
 ### 6.3 Known properties and limits
 
+> The properties below describe the glyph-mass **rule**. Since the second round of work (Sections 6.5-6.8) the default selector is the calibrated classifier, `mixed` mode chooses a script per line, and Tamil is read by a fine-tuned model; each limit below is annotated where that changed it.
+
 - **Cost:** about 3x the compute of manual mode (three engines). Manual mode runs one.
 - **One script per image:** mixed-script documents get a single script and one engine's
   reading. The Indic engines also read Latin words (so a Hindi page with English words
@@ -403,6 +425,65 @@ below 0.5 (an Indic winner chosen at 25-50% share).
    Indic share is small).
 3. **Evaluation reports both rules** (Section 10.5) because the second rule was introduced
    before the evaluation ran, so its held-out figure is not a clean unseen-data estimate.
+
+### 6.5 Calibrated script selection (C9)
+
+The hand-written rule has one hand-chosen constant and, as Section 10.5 shows, collapses when the
+engines change. `recognition/script_classifier.py` replaces it with a multinomial logistic
+regression (L2-regularized, `scipy` L-BFGS) over 15 features, five per engine: confidence-weighted
+mean score, fraction of the engine's output inside its own script, fraction of Latin letters, an
+"empty output" flag, and its share of the total glyph mass. Features are deliberately
+**length-invariant** (no character counts): the evaluation pairs ~61-character English lines with
+~6-10-character Indic words, so counts would let the model detect line length instead of script.
+The selector returns per-script probabilities. It returns `None` (English fallback, flagged) only
+when no engine produced any text at all; out-of-script garbage (a Tamil word read as Latin
+letters) is itself evidence and is classified.
+
+Training and honest evaluation (`experiments/script_classifier/train_classifier.py`): 10 repeats of
+stratified 5-fold cross-validation over the 150 labelled outputs of E7, with the L2 strength chosen
+by an inner 4-fold search inside every training fold; the two rules are scored on the same images.
+The shipped weights are fitted on all 150 images. Because the weights depend on how the engines
+behave, there are two files: `script_classifier_weights.json` (stock Tamil model) and
+`script_classifier_weights_ft.json` (fine-tuned Tamil model); `main.py` pairs them automatically
+(Section 5.4). Results: Section 10.9.
+
+### 6.6 Per-line (mixed-script) mode (C11)
+
+`script: mixed` runs the three engines on the whole page, merges the vertical extents of all their
+detections into horizontal **bands** (text lines; two extents merge when their overlap is at least
+30% of the smaller height), applies the selector to the outputs falling inside each band, and takes the
+band's regions from the winning engine (each region keeps its `script` and `band`). A single line
+that itself mixes scripts still receives one script, and the cost equals auto mode. Evaluation on
+stitched pages: Section 10.10.
+
+### 6.7 Leakage suppression (C12)
+
+`recognition/leakage.py`: a region of the Tamil or Hindi engine that contains Latin letters, none
+of its own script, and a score below 0.7 is withheld and reported (`detection.suppressed`). On the
+cached outputs the 0.7 cut flagged 96% of leaked regions and 6% of genuine Latin ones (14 of 233
+Latin regions read by Indic engines on the English images). The threshold was read off those
+outputs, not tuned on a separate set. In auto/mixed mode leakage is instead resolved by comparing
+engines. Effect on CER: Section 10.11.
+
+### 6.8 Fine-tuned Tamil recogniser (C10)
+
+The stock `ta_PP-OCRv5_mobile_rec` is the project's weakest component (71.1% CER; leakage on 17/30
+images). Full fine-tuning through PaddleX/PaddleOCR ran at about 0.4 samples/s on the 6-core laptop
+CPU (roughly 4 hours per epoch of 6,000 words) and PaddleX has no registered training entry for
+the Tamil model, so the backbone (PPLCNetV3) was **frozen**, its features for 6,000 training words
+(rows 1000-6999 of `c3rl/IIIT-INDIC-HW-WORDS-Tamil`; the evaluation images are rows 0-49 and the
+validation words rows 500-799) were computed once (about one hour) and cached, and only the CTC
+branch (SVTR neck and CTC head) was trained with CTC loss for 25 epochs (Adam, cosine learning
+rate 5e-4, batch 32; `experiments/finetune/head_finetune.py`). No image augmentation was possible
+on cached features. The best checkpoint (epoch 25) was exported with PaddleOCR's `export_model.py`
+into `models/ta_PP-OCRv5_mobile_rec_ft/` (detector unchanged; loaded through
+`text_recognition_model_dir`). Validation CER (300 words) went 68.9% -> 6.7% and exact match 2.7% ->
+61%. Pipeline results: Section 10.8; method and commands: `docs/tamil_finetune.md`.
+
+Side effects to know about: the fine-tuned engine was trained on Tamil only, so it renders any
+script as Tamil characters; this makes the Tamil mass non-zero on English and Hindi images and breaks
+the hand-written selection rule (Section 10.9), which is why the classifier is retrained for it.
+Tamil words the detector fails to find still come out empty.
 
 ---
 
@@ -453,14 +534,19 @@ kept (not deleted) so the V1-vs-V2 comparison is reproducible.
 | `config.py`, `config.yaml` | configuration loader and defaults |
 | `recognition/registry.py` | route/label registry |
 | `recognition/paddle_recognizer.py` | PaddleOCR wrapper per language |
-| `recognition/script_detector.py` | script identification scoring |
+| `recognition/script_detector.py` | script identification scoring (rule) |
+| `recognition/script_classifier.py`, `script_classifier_weights.json`, `script_classifier_weights_ft.json` | calibrated selector and its two weight files |
+| `recognition/region_merge.py` | per-line (mixed-script) merge |
+| `recognition/leakage.py` | Latin-leakage suppression |
+| `models/ta_PP-OCRv5_mobile_rec_ft/` | fine-tuned Tamil recognition model (PaddleOCR inference format, 7.8 MB) |
 | `webapp/app.py`, `webapp/static/index.html` | web API and UI |
-| `webapp/ui_tests/` | `mock_server.py` (canned API, real static UI) and `ui_test.py` (Playwright, 32 checks); not part of `pytest` |
+| `webapp/ui_tests/` | `mock_server.py` (canned API, real static UI) and `ui_test.py` (Playwright, 38 checks); not part of `pytest` |
 | `docs/figures/` | UI screenshots for the report (local-only; see its README) |
-| `tests/` | 20 production tests |
+| `tests/` | 39 production tests |
 | `legacy_v1/` | V1 code, tests, config, README |
 | `requirements*.txt` | `requirements.txt` (production), `-dev` (pytest, datasets), `-webapp` (FastAPI, uvicorn), `-legacy` (V1 stack) |
 | `experiments/runs/` | evaluation scripts, data and reports (gitignored) |
+| `experiments/fresh/`, `script_classifier/`, `leakage/`, `finetune/` | fresh-image evaluation, classifier training and cross-validation, leakage evaluation, Tamil fine-tuning scripts and reports (gitignored) |
 | `docs/` | research and project documents (gitignored) |
 | `input/images/sample.png` | sample English exam page used throughout |
 | `models/frozen_east_text_detection.pb` | V1 only, gitignored |
@@ -530,6 +616,11 @@ from different datasets, writers and capture conditions.
 | E7 | Script identification (design / held-out) | 150 real | `script_id/raw_outputs.jsonl`, `script_id_report.json` |
 | E8 | Latency | sample + word images | single timed runs |
 | E9 | V1 vs V2 qualitative on `sample.png` | 1 page | — |
+| E10 | Tamil recogniser fine-tuning: CER, exact match and Latin leakage, stock vs fine-tuned | 30 earlier images (rows 0-29) + 40 fresh (rows 7000-7039) | `experiments/finetune/cer_report.json` |
+| E11 | Selector comparison: argmax vs rule vs calibrated, both Tamil models | 120 fresh images (40 per language) | `experiments/fresh/eval_images_orig.json`, `eval_ft.json` |
+| E12 | Cross-validation of the classifier | the 150 images of E7 | `script_id/classifier_cv_report_*.json` |
+| E13 | Per-line script identification | 20 stitched pages, 60 lines | `experiments/fresh/eval_orig.json`, `eval_ft.json` |
+| E14 | Leakage suppression | 30 + 30 earlier images, 40 + 40 fresh | `experiments/leakage/leakage_report.json`, E11 reports |
 
 ### 9.4 Controls and gaps
 
@@ -538,7 +629,12 @@ the same CER code for all languages, and a held-out split for script identificat
 first (argmax) rule was fixed before any of the evaluation data was scored and has no fitted
 parameters; the current rule adds a hand-chosen 25% Indic-override threshold that was
 introduced before the evaluation ran, so both rules are reported and the current rule's
-held-out figure is not a clean unseen-data estimate. Not done: random sampling, repeated
+held-out figure is not a clean unseen-data estimate. E11-E14 use **fresh images** pulled after the
+learned components were built (English: IAM-line rows 50-109; Hindi: rows 1000-1059; Tamil: rows
+7000-7059, beyond the 6,000 fine-tuning words); the classifier never saw them, but one design choice
+(letting the classifier decide when out-of-script text is present, which matches how it is trained and
+cross-validated) was made after seeing the first fresh result, so the fresh figure is slightly
+optimistic. Not done: random sampling, repeated
 runs, confidence intervals, significance tests, grapheme-level CER, WER, comparison
 with other OCR engines, V1 on the real datasets.
 
@@ -694,6 +790,86 @@ vendor's own test sets. The English figure belongs to a PP-OCRv5 model; this pro
 English pipeline uses PP-OCRv6, so it is not the model in use. These are not comparable to
 the real-handwriting results above and the large gap was not diagnosed.
 
+### 10.8 Fine-tuned Tamil recogniser (C10)
+
+CER = sum of Levenshtein distances / sum of reference lengths (code points); prediction = the
+engine's regions joined by spaces; same detector, only the recognition model differs.
+
+| Image set | Model | CER | Exact | Predictions with Latin letters |
+|---|---|---|---|---|
+| Earlier 30 images (rows 0-29) | stock | 71.1% | 1/30 | 17/30 |
+| | fine-tuned | **13.9%** | 13/30 | 0/30 |
+| Fresh 40 images (rows 7000-7039) | stock | 83.9% | 1/40 | 25/40 |
+| | fine-tuned | **24.9%** | 19/40 | 0/40 |
+| Validation, 300 words (rows 500-799) | stock head | 68.9% | 2.7% | — |
+| | fine-tuned head | 6.7% | 61% | — |
+
+Caveats: all words come from one dataset (IIIT-INDIC-HW-WORDS-Tamil); the evaluation rows are
+disjoint from the training rows but probably share writers, so this is adaptation to that handwriting
+source, not evidence for Tamil handwriting in general (no other Tamil set was tried). The validation
+figure was used for checkpoint selection; the other two sets were not. Hindi (47.7% on the earlier
+images, 42.6% on the fresh ones) and English are unchanged.
+
+### 10.9 Script identification: calibrated classifier vs rules (C9)
+
+**Fresh images** (120, 40 per language, never examined; the cleanest figure in this project):
+
+| Tamil model | Selector | Overall | English | Tamil | Hindi |
+|---|---|---|---|---|---|
+| stock | argmax (first rule) | 55.8% (67/120) | 39/40 | 10/40 | 18/40 |
+| stock | rule (argmax + Indic override) | 74.2% (89/120) | 39/40 | 13/40 | 37/40 |
+| stock | **calibrated classifier** | **93.3% (112/120)** | 39/40 | 36/40 | 37/40 |
+| fine-tuned | argmax | 60.8% (73/120) | 31/40 | 33/40 | 9/40 |
+| fine-tuned | rule | 42.5% (51/120) | 0/40 | 35/40 | 16/40 |
+| fine-tuned | **calibrated classifier** | **93.3% (112/120)** | 36/40 | 38/40 | 38/40 |
+
+**Cross-validation on the earlier 150 images** (10 repeats of 5-fold, inner search for the L2 strength):
+
+| Tamil model | Classifier accuracy (mean, sd over repeats) | Per script (English / Tamil / Hindi) | Log loss | Brier | Calibration error (ECE) | argmax / rule on the same images |
+|---|---|---|---|---|---|---|
+| stock | 91.4% (1.4) | 47.1/50, 45.1/50, 44.9/50 | 0.335 | 0.143 | 0.028 | 65.3% / 77.3% |
+| fine-tuned | 89.7% (1.2) | 45.7/50, 45.5/50, 43.3/50 | 0.443 | 0.178 | 0.041 | 71.3% / 47.3% |
+
+What it shows: the learned selector fixes the weak point of the rule (Tamil: 13/40 -> 36/40 on fresh
+images with the stock model) and keeps working when the engines change, whereas the rule breaks
+because the fine-tuned Tamil engine emits Tamil characters for other scripts too. Caveats: n = 120
+and 150, no confidence intervals; English images are sentence lines and Indic images are single
+words, so English may be easier to separate than short English words would be (the features avoid
+counts, but confidences can still differ by unit); the weights are fitted on only 150 images, and
+probabilities on image types other than these (printed text, photos) are unvalidated. The
+two fresh-image rows marked "calibrated" share the 112/120 total by coincidence.
+
+### 10.10 Per-line script identification on stitched pages (C11)
+
+20 pages, each stacking one English line, one Tamil word and one Hindi word in random order (fresh
+images 40-59 of each language, white padding); 60 ground-truth lines.
+
+| Tamil model | Selector | Lines correct | Pages fully correct |
+|---|---|---|---|
+| stock | **calibrated, per line** | **58/60** | 18/20 |
+| stock | rule, per line | 49/60 | 9/20 |
+| stock | one script for the whole page (auto) | 20/60 | — |
+| fine-tuned | **calibrated, per line** | **59/60** | 19/20 |
+| fine-tuned | rule, per line | 32/60 | 0/20 |
+| fine-tuned | one script for the whole page (auto) | 20/60 | — |
+
+The pages are synthetic (crops of the same handwriting datasets), each line contains one script, and
+no real mixed-script document was tested. A mixed page took about 70 s on this CPU (large image, three
+engines).
+
+### 10.11 Leakage suppression (C12)
+
+| Image set | Language | CER without | CER with suppression | Regions withheld |
+|---|---|---|---|---|
+| Earlier 30 images | Tamil (stock) | 71.1% | 70.4% | 10 |
+| | Hindi | 47.7% | 47.2% | 2 |
+| Fresh 40 images | Tamil (stock) | 83.9% | 82.6% | — |
+| | Hindi | 42.6% | 41.8% | — |
+
+A withheld region scores like an empty prediction, which is only slightly better than a wrong Latin
+string, so the CER effect is small; the value is that garbage text is not shown to the user (UI notice).
+With the fine-tuned Tamil model there is nothing to withhold for Tamil (0/30 and 0/40 Latin outputs).
+
 ---
 
 ## 11. Analysis and discussion
@@ -721,7 +897,15 @@ the real-handwriting results above and the large gap was not diagnosed.
 6. **Auto-detect trades compute for convenience** (about 3x) and is bounded by the
    recognizers' own failure modes; manual mode is the fast path when the language is
    known. See Section 10.5 for the measured accuracy.
-7. **Honest framing for a paper:** a case study of script-dependent failure modes and
+7. **The second round of work moved the weakest numbers, with caveats.** Fine-tuning the
+   Tamil head (Section 6.8) cut Tamil CER from 71.1% to 13.9% and removed the leakage, but it
+   adapts the model to one handwriting source and makes the engine read every script as Tamil,
+   which broke the hand-written selection rule; a small learned selector (Section 6.5) restored
+   and improved script identification (93.3% on 120 fresh images). The pattern is worth stating
+   plainly: a component-level gain can invalidate a heuristic downstream, and the learned
+   selector must be paired with the exact model it was trained on. The remaining uncertainty is
+   generalization: all gains are measured on the same few datasets.
+8. **Honest framing for a paper:** a case study of script-dependent failure modes and
    their remediation, a real-data measurement with a quantified failure mode, an
    evaluation-practice caution, and a tested script-ID baseline. A stronger paper needs
    larger real datasets, word-level units for all languages, grapheme-level metrics,
@@ -731,14 +915,17 @@ the real-handwriting results above and the large gap was not diagnosed.
 
 ## 12. Testing
 
-`pytest tests/ legacy_v1/tests/ -q` -> **41 passed**, no model downloads or network.
+`pytest tests/ legacy_v1/tests/ -q` -> **60 passed**, no model downloads or network.
 
 | File | Tests | Covers |
 |---|---|---|
 | `tests/test_registry.py` | 4 | register/lookup, missing route, three scripts registered, exact engine labels |
 | `tests/test_paddle_recognizer.py` | 3 | lazy construction (model not loaded), invalid script -> `ValueError`, `sort_reading_order` (line grouping, left-to-right order, re-numbered `index`) |
 | `tests/test_script_detector.py` | 9 | Latin/Tamil/Devanagari glyph counting, confidence weighting, argmax, out-of-block garbage ignored, no-evidence cases, Indic override on a mixed Hindi+English poster, English kept when the Indic share is small |
-| `tests/test_main_recognize.py` | 4 | `main.recognize` orchestration with fake recognizers: auto picks the right script and reuses its regions, English fallback is flagged, manual runs only the chosen engine, masses/share reported |
+| `tests/test_main_recognize.py` | 9 | `main.recognize` orchestration with fake recognizers: auto picks the right script and reuses its regions, English fallback is flagged, manual runs only the chosen engine, masses/share reported, mixed mode chooses per line, leakage suppression only when asked, calibrated selector reports probabilities, fine-tuned model directories honoured/ignored, classifier weights paired with the Tamil model |
+| `tests/test_script_classifier.py` | 6 | feature vector matches its names and is length-invariant, empty-engine flag, `None` only when there is no text at all, out-of-script garbage still classified, probabilities sum to 1, shipped weights match the feature set |
+| `tests/test_leakage.py` | 5 | Latin garbage from Indic engines flagged, confident/own-script text kept, English never suppressed, renumbering |
+| `tests/test_region_merge.py` | 3 | line bands across engines, per-line scripts, English fallback flagged |
 | `legacy_v1/tests/test_grouping.py` | 8 | grouping regression/adversarial cases (the left-drift cases fail on pre-fix code) |
 | `legacy_v1/tests/test_boxes.py` | 12 | `clamp_box`, `pad_and_clamp_box` |
 | `legacy_v1/tests/test_east_detector.py` | 1 | missing image -> `FileNotFoundError` |
@@ -748,9 +935,10 @@ requests (all three languages in auto and manual mode, crops, health, research a
 invalid script, traversal attempt).
 
 **UI tests (outside `pytest`):** `webapp/ui_tests/ui_test.py` drives an installed Edge/Chrome through
-Playwright against `webapp/ui_tests/mock_server.py` and checks 32 behaviours: status pill, sample
+Playwright against `webapp/ui_tests/mock_server.py` and checks 38 behaviours: status pill, sample
 load, loading state, detected chip, line rendering, low-confidence marking, re-run buttons,
-overlay/row hover linking, clipboard copy, download, theme switch, research tab, Tamil rendering
+overlay/row hover linking, clipboard copy, download, calibrated-probability chip, mixed-page mode and its per-line list,
+hidden-garbage notice, theme switch, research tab, Tamil rendering
 (`lang="ta"`), cancel, server-error and network-failure states, no horizontal overflow at 390 px
 wide, no console errors. All pass. The UI was also driven against the real server with real
 models (no console errors; auto-detect chips correct for the sample page and a Hindi word). Setup:
@@ -776,6 +964,7 @@ CLI:
 ```
 python main.py                                        # auto-detect script on input/images/sample.png
 python main.py --script tamil --input path\to\img.png # force one language (faster)
+python main.py --script mixed --input page.png        # script chosen per text line
 python main.py --input img.png --output-dir out
 ```
 
@@ -790,6 +979,20 @@ python experiments/runs/run_paddleocr_eval.py all        # E5: CER reports
 python experiments/runs/script_id/run_engines.py         # E7: 3 engines x 150 images (slow, resumable)
 python experiments/runs/script_id/evaluate.py            # E7: script-ID accuracy
 ```
+
+Learned components (detail in `docs/tamil_finetune.md` and `docs/reproducibility.md`):
+
+```
+python experiments/fresh/pull_fresh.py                   # fresh evaluation images (English/Hindi/Tamil)
+python experiments/fresh/build_pages.py                  # 20 stitched mixed-script pages
+python experiments/fresh/run_engines.py experiments/fresh/manifest.json experiments/fresh/raw_images_orig.jsonl --use image_level
+python experiments/fresh/eval_fresh.py experiments/fresh/raw_images_orig.jsonl experiments/fresh/raw_pages_orig.jsonl experiments/fresh/eval_orig.json
+python experiments/script_classifier/train_classifier.py experiments/runs/script_id/raw_outputs_ft.jsonl --write --out=recognition/script_classifier_weights_ft.json
+```
+
+The Tamil fine-tune itself needs a separate training environment (`paddlepaddle` + `paddlex` +
+the PaddleOCR repository cloned by `paddlex --install PaddleOCR`) and hours of CPU time; see
+`docs/tamil_finetune.md`. The exported model is shipped in `models/ta_PP-OCRv5_mobile_rec_ft/`.
 
 Legacy V1: `pip install -r requirements-legacy.txt`, place the EAST weights in `models/`,
 `python -m legacy_v1.main --script english`.
@@ -844,6 +1047,10 @@ abstracts, snippets), **not** as full papers; treat as pointers, not a literatur
 12. CPU-only, synchronous, single process; latency is single-run on one laptop.
 13. Datasets and the EAST weights are `REQUIRES_REVIEW` for licensing.
 14. Single author, single machine; no independent replication.
+15. The Tamil fine-tune is evaluated on words from the dataset it was trained on (different rows, probably shared writers); no other Tamil handwriting was tested, and a frozen backbone limits what it can learn.
+16. The calibrated selector is fitted on 150 images and checked on 120; its probabilities are unvalidated outside these image types, English is scored on lines vs Indic words, and its weights must be paired with the Tamil model they were trained for.
+17. Per-line mode was tested only on synthetic stacked pages with one script per line; mixed lines are not handled.
+18. The fine-tuned Tamil engine reads any script as Tamil; Tamil words the detector misses still produce no output.
 
 ---
 
@@ -859,6 +1066,7 @@ abstracts, snippets), **not** as full papers; treat as pointers, not a literatur
 | 2026-10-09 | Tamil route (`ocr_tamil`); Hindi route (EasyOCR, self-detecting contract); padding + warm-up | `bdcfbaa`, `a1d61d2`, `bb47ce0` |
 | 2026-10-09 | V2: PaddleOCR rewrite, V1 moved to `legacy_v1/` | `e90636d` |
 | 2026-10-09 | Automatic script identification (`d8f8290`); Indic-override rule + reading-order sort (`ec77275`); documentation overhaul | `d8f8290`, `ec77275` |
+| 2026-10-11 | Calibrated selector, per-line mode, leakage suppression, fine-tuned Tamil recogniser, fresh-image evaluation (working tree; commit pending) | — |
 
 Decision log with rationale, dead ends and corrections: `docs/project_history.md`.
 
@@ -874,12 +1082,13 @@ Decision log with rationale, dead ends and corrections: `docs/project_history.md
 
 ### 16.3 Future work
 
-- Per-region script identification for mixed-script documents.
-- Use recognition confidence (flag/route low-confidence regions); detect and suppress script leakage (e.g. re-run the right engine or reject Latin output from an Indic engine).
+- Per-region (word-level) script identification, so that one line mixing scripts is handled.
+- Fine-tune the Hindi recogniser the same way, and evaluate the Tamil fine-tune on a second, independent Tamil handwriting set; unfreeze the backbone with augmentation if GPU time becomes available.
+- Validate the classifier's probabilities on printed text, photographs and short English words, and add a rejection threshold for "not one of the three scripts".
 - Larger, word-level, multi-dataset evaluation for all three languages; grapheme-level CER and WER; confidence intervals; V1 on the same real data; same-engine synthetic-vs-real control.
 - Isolate why vendor Tamil accuracy (94.2%) and the real-handwriting result (71.1% CER) differ.
 - More scripts/languages (a `LANG_CODES` + label entry plus evaluation); the most open research direction identified is OCR for very low-resource scripts.
-- Productionization: auth, upload limits, cleanup, async/batching, GPU path, caching of the per-engine results.
+- Productionization: auth, upload limits, cleanup, async/batching, GPU path, caching of the per-engine results (a mixed page took ~70 s).
 
 ---
 
@@ -940,7 +1149,7 @@ inventory (12); limitations (15).
 
 3 languages; 3 PaddleOCR engines (English PP-OCRv6, Tamil/Hindi PP-OCRv5); auto detection
 by confidence-weighted in-script glyph mass; 150 real images for script-ID (30 design + 20
-held-out per language); 90 real images for CER (30 per language); 41 tests; CPU-only AMD
+held-out per language) plus 120 fresh images and 20 mixed pages; 90 real images for CER (30 per language); 60 tests; CPU-only AMD
 Ryzen 5 5625U; V1 English 126.8 s vs V2 English 14.5 s on the same sample page (V1 32
 fragments, V2 16 lines).
 
@@ -957,17 +1166,20 @@ fragments, V2 16 lines).
 ├── recognition/
 │   ├── registry.py               label registry
 │   ├── paddle_recognizer.py      PaddleOCR wrapper (3 languages)
-│   ├── script_detector.py        script identification scoring
+│   ├── script_detector.py        script identification scoring (rule)
+│   ├── script_classifier.py      calibrated selector (+ weights *.json for the stock / fine-tuned Tamil model)
+│   ├── region_merge.py           per-line mixed-script mode
+│   ├── leakage.py                Latin-leakage suppression
 │   └── README.md
 ├── webapp/
 │   ├── app.py                    FastAPI backend
 │   ├── static/index.html         single-file UI
 │   ├── ui_tests/                 mock API + Playwright UI test (not part of pytest)
 │   └── README.md
-├── tests/                        20 production tests (+ README.md)
+├── tests/                        39 production tests (+ README.md)
 ├── legacy_v1/                    V1 (EAST, grouping, classifier, TrOCR/ocr_tamil/EasyOCR) + 21 tests + README.md
 ├── input/images/sample.png       sample English page
-├── models/                       EAST weights (V1 only, gitignored)
+├── models/                       fine-tuned Tamil recognition model (ta_PP-OCRv5_mobile_rec_ft/); EAST weights (V1 only, gitignored)
 ├── docs/                         local-only research docs (see 18.2); docs/figures/ = UI screenshots
 ├── experiments/                  local-only evaluation data/scripts/reports (+ README.md)
 └── requirements*.txt             production / dev / webapp / legacy

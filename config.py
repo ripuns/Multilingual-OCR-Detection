@@ -5,6 +5,9 @@ import yaml
 
 DEFAULTS = {
     "script": "auto",
+    "selector": "calibrated",
+    "suppress_leakage": True,
+    "models": {"tamil": "models/ta_PP-OCRv5_mobile_rec_ft"},
     "paths": {"input": "input/images/sample.png", "output_dir": "output"},
     "logging": {"level": "INFO"},
 }

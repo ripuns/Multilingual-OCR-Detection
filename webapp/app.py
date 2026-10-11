@@ -20,7 +20,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 UPLOADS_DIR = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOADS_DIR, exist_ok=True)
 
-ALLOWED_SCRIPTS = {"auto", "english", "tamil", "hindi"}
+ALLOWED_SCRIPTS = {"auto", "mixed", "english", "tamil", "hindi"}
 
 _WARM = {"english": False, "tamil": False, "hindi": False, "done": False}
 
@@ -29,7 +29,7 @@ _WARM = {"english": False, "tamil": False, "hindi": False, "done": False}
 async def lifespan(app: FastAPI):
     print("Warming up PaddleOCR for all 3 languages (English, Tamil, Hindi)...")
     start = time.monotonic()
-    warm_up()
+    warm_up(load_config("config.yaml"))
     elapsed = time.monotonic() - start
     for script in ("english", "tamil", "hindi"):
         _WARM[script] = True
@@ -65,8 +65,11 @@ RESEARCH_FINDINGS = {
         "for Tamil, no boxes at all for Hindi). V2: one PaddleOCR engine per language "
         "removed those detection failures, but on real third-party handwriting the "
         "engines still make many errors, notably Latin-letter 'script leakage' by the "
-        "Tamil engine. A clean synthetic pilot had made accuracy look far better than "
-        "it is on real data."
+        "stock Tamil engine. Fine-tuning only the sequence head of the Tamil recogniser on "
+        "isolated handwritten Tamil words cut Tamil CER from 71.1% to 13.9% on the original "
+        "evaluation images and removed the leakage, and a small learned classifier then chose "
+        "the script far better than the hand-written rule. A clean synthetic pilot had made "
+        "accuracy look far better than it is on real data."
     ),
     "v1_gradient": [
         {
@@ -97,16 +100,20 @@ RESEARCH_FINDINGS = {
     "v2_real_data": [
         {"script": "English", "dataset": "Teklia/IAM-line", "unit": "sentence line", "mean_len": 60.9, "n": 30, "cer": 0.241, "exact_match": "0/30", "synthetic_cer": None},
         {"script": "Hindi", "dataset": "IIIT-INDIC-HW-WORDS-Hindi", "unit": "word", "mean_len": 6.4, "n": 30, "cer": 0.477, "exact_match": "2/30", "synthetic_cer": 0.071},
-        {"script": "Tamil", "dataset": "IIIT-INDIC-HW-WORDS-Tamil", "unit": "word", "mean_len": 9.6, "n": 30, "cer": 0.711, "exact_match": "1/30", "synthetic_cer": 0.259},
+        {"script": "Tamil", "dataset": "IIIT-INDIC-HW-WORDS-Tamil", "unit": "word", "mean_len": 9.6, "n": 30, "cer": 0.139, "exact_match": "13/30", "synthetic_cer": 0.259, "stock_cer": 0.711, "note": "fine-tuned Tamil head"},
     ],
+    "leakage_after_finetune": "0/30 Tamil predictions contained Latin letters after fine-tuning (17/30 before); 0/40 on fresh images (25/40 before).",
     "leakage": [
         {"script": "Tamil", "with_latin": "17/30", "cer_with": 0.912, "cer_without": 0.461},
         {"script": "Hindi", "with_latin": "2/30", "cer_with": 1.167, "cer_without": 0.455},
     ],
     "script_id": {
-        "design": {"n": 90, "accuracy": 0.767, "per_script": "English 28/30 / Tamil 15/30 / Hindi 26/30"},
-        "heldout": {"n": 60, "accuracy": 0.783, "per_script": "English 20/20 / Tamil 10/20 / Hindi 17/20"},
-        "note": "Current rule (argmax + Indic override). First argmax rule: 65.3% overall (held-out 70.0%). The current rule was revised before the evaluation, so its held-out figure is not a clean unseen-data estimate. Handwritten Tamil is the weak case: the Tamil engine often emits no Tamil at all, so choose Tamil manually when you know it.",
+        "rows": [
+            {"split": "Fresh images (never examined; clean test)", "n": 120, "accuracy": 0.933, "per_script": "English 36/40 / Tamil 38/40 / Hindi 38/40"},
+            {"split": "Cross-validation on the earlier 150 images", "n": 150, "accuracy": 0.897, "per_script": "English 45.7/50 / Tamil 45.5/50 / Hindi 43.3/50 (mean over 10 repeats)"},
+            {"split": "Mixed pages, each line scored (20 stitched pages)", "n": 60, "accuracy": 0.983, "per_script": "59/60 lines; 19/20 pages fully correct"},
+        ],
+        "note": "Calibrated classifier (small logistic regression on the three engines' output statistics). On the stock Tamil model the same classifier scored 93.3% on the fresh images (Tamil 36/40) while the earlier hand-written rule scored 74.2%; with the fine-tuned Tamil model the hand-written rule fails (51/120) because that engine reads other scripts as Tamil, so the classifier is required. English is scored on sentence lines and Tamil/Hindi on isolated words, which may make English easier to separate than it would be for short English words.",
     },
     "vendor_benchmarks": {
         "english": {"value": 0.8525, "model": "en_PP-OCRv5_mobile_rec (this project's English pipeline uses PP-OCRv6, so this is NOT the model in use)"},
@@ -115,6 +122,7 @@ RESEARCH_FINDINGS = {
     },
     "caveats": [
         "The three CERs are NOT comparable across languages: English is scored on ~61-character sentence lines, Tamil/Hindi on 6-10-character isolated words, from different datasets and writers. No claim about which script is harder is supported.",
+        "The Tamil fine-tuning used 6,000 words from the same dataset as the evaluation images (different rows, probably some of the same writers), so the Tamil gain shows adaptation to that handwriting source, not generalization to all Tamil handwriting. English and Hindi are unchanged.",
         "n=30 per language, first rows of each dataset (not random); no confidence intervals. CER counts Unicode code points, which penalizes Tamil/Devanagari more than a grapheme-level metric would.",
         "The synthetic-vs-real comparison mixes an engine change (V1 -> V2) with a data change; it supports a caution about clean synthetic pilots, not a clean estimate of a synthetic-to-real gap.",
         "Vendor benchmark figures were measured by PaddleOCR on its own test sets with specific PP-OCRv5 mobile models; they are context, not a comparison point.",
@@ -148,7 +156,7 @@ async def ocr(file: UploadFile = File(...), script: str = Form("auto")):
     config = load_config("config.yaml")
     config["script"] = script
 
-    was_warm = _WARM["done"] if script == "auto" else _WARM.get(script, False)
+    was_warm = _WARM["done"] if script in ("auto", "mixed") else _WARM.get(script, False)
     start = time.monotonic()
     try:
         outcome = run_pipeline(input_path, run_dir, config)
