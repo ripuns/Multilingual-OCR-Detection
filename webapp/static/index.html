@@ -829,7 +829,7 @@ function renderDev(data) {
     det.append(bars, el("p", { class: "small", style: "margin:8px 0 0", text: d.fallback
       ? "No script produced any readable characters, so English was used by default."
       : pr
-        ? "Calibrated probability: " + ["english", "tamil", "hindi"].map((s) => `${LABEL[s]} ${Math.round(pr[s] * 100)}%`).join(" · ") + ". From a small classifier trained on 450 labelled outputs; probabilities on other kinds of images may be less reliable."
+        ? "Calibrated probability: " + ["english", "tamil", "hindi"].map((s) => `${LABEL[s]} ${Math.round(pr[s] * 100)}%`).join(" · ") + ". From a small classifier trained on 550 labelled outputs; probabilities on other kinds of images may be less reliable."
         : "The script with the most evidence wins; Tamil or Hindi win once they hold at least 25% of the total. This is a heuristic, not a calibrated probability." }));
   }
   if (d.mode === "mixed" && d.bands) {
@@ -942,14 +942,21 @@ function renderResearch(d) {
     root.append(t);
   }
 
-  const s1 = el("div", { class: "section" }, el("h2", { text: "Real-handwriting accuracy (character error rate, lower is better)" }));
+  const s1 = el("div", { class: "section" }, el("h2", { text: "Real-handwriting accuracy (character error rate, lower is better; 200 fresh images each)" }));
   d.v2_real_data.forEach((r) => {
     s1.append(bar2(r.script, `${r.dataset} · ${r.unit}s, n=${r.n}`, r.cer, "real"));
-    if (r.stock_cer != null) s1.append(bar2("Stock Tamil model, before fine-tuning", "same 30 images", r.stock_cer, "synth", "indent"));
+    if (r.stock_cer != null) s1.append(bar2(`Stock ${r.script} model, before adaptation`, `same ${r.n} images`, r.stock_cer, "synth", "indent"));
     if (r.synthetic_cer != null) s1.append(bar2("Earlier clean synthetic pilot", "5 images, not comparable", r.synthetic_cer, "synth", "indent"));
   });
-  s1.append(el("p", { class: "small", text: "These three numbers use different test sets (English: sentence lines; Tamil and Hindi: isolated words) and must not be compared with each other." }));
+  s1.append(el("p", { class: "small", text: "These three numbers use different test sets (English: sentence lines; Tamil and Hindi: isolated words) and must not be compared with each other. Tamil and Hindi bars show the head-adapted recognisers; the stock result is shown below each." }));
   root.append(s1);
+
+  (d.comparisons || []).forEach((c) => {
+    const sc = el("div", { class: "section" }, el("h2", { text: c.title }));
+    sc.append(table(c.headers, c.rows));
+    if (c.note) sc.append(el("p", { class: "small", style: "margin-top:8px", text: c.note }));
+    root.append(sc);
+  });
 
   const sl = el("div", { class: "section" }, el("h2", { text: "Why the stock Tamil model failed: it often answered in Latin letters" }));
   sl.append(table(["Engine", "Predictions containing Latin letters", "Error rate on those", "Error rate on the rest"],

@@ -30,13 +30,13 @@ script identifier so users need not pick a language.
   Blocks: Tamil U+0B80-0BFF, Devanagari U+0900-097F, Latin letters A-Z/a-z.
 
 - `script_classifier.py` — `extract_features` (15 length-invariant features), `ScriptClassifier`
-  (multinomial logistic regression), `pick_script_calibrated(results, variant="base"|"ft")` ->
+  (multinomial logistic regression), `pick_script_calibrated(results, variant="base"|"ft"|"ft2")` ->
   `(winner | None, {"masses","share","probabilities"})`. Weights: `script_classifier_weights.json`
-  (stock Tamil model) and `script_classifier_weights_ft.json` (fine-tuned Tamil model); keep the pair matched.
+  (stock Tamil model) and `script_classifier_weights_ft.json` (fine-tuned Tamil model) and `script_classifier_weights_ft2.json` (fine-tuned Tamil and Hindi models); keep the weights matched to the configured models (`main._selector` does this).
 - `region_merge.py` — `line_bands`, `merge_by_line(by_script, selector)`: per-line script for mixed pages.
 - `leakage.py` — `is_latin_leak`, `suppress_leakage`: withholds low-confidence Latin-only output of the Indic engines.
 - `PaddleOcrRecognizer(script, rec_model_dir=None)` can load a fine-tuned recognition model
-  (`text_recognition_model_dir`); `main.configure_models` wires it from `config.yaml` (`models.tamil`).
+  (`text_recognition_model_dir`); `main.configure_models` wires it from `config.yaml` (`models.tamil`, `models.hindi`).
 
 ## Structure
 - `registry.py`

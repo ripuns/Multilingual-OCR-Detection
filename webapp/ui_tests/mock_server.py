@@ -96,4 +96,4 @@ class H(BaseHTTPRequestHandler):
                         "results": rs, "elapsed_seconds": 13.27 if script in ("auto", "mixed") else 3.1, "was_warm": True})
 
 
-ThreadingHTTPServer(("127.0.0.1", 8765), H).serve_forever()
+ThreadingHTTPServer(("127.0.0.1", int(os.environ.get("MOCK_PORT", "8765"))), H).serve_forever()

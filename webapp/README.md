@@ -31,7 +31,7 @@ Run: `pip install -r requirements-webapp.txt` then
   `docs/architecture.md` Section 3.3 and the root README Section 5.5.
 - `ui_tests/` - `mock_server.py` (serves the real UI with canned API responses; the 16-region result is
   the recorded real output for the sample page) and `ui_test.py` (Playwright driving an installed
-  Edge/Chrome; 38 checks). Not part of `pytest`. Setup: `pip install playwright`; run
+  Edge/Chrome; 38 checks; the page was redesigned in October 2026 with the same element IDs). Not part of `pytest`. Setup: `pip install playwright`; run
   `python webapp/ui_tests/mock_server.py` in one terminal and `python webapp/ui_tests/ui_test.py` in
   another (needs `experiments/runs/tamil_pilot/images/sample_0.png` for the Tamil step; set `SHOTS_DIR`
   to choose the screenshot folder, `UI_URL` to point at another server).

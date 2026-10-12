@@ -59,18 +59,21 @@ def health():
 # independent of markdown formatting.
 RESEARCH_FINDINGS = {
     "claim": (
-        "This project produced linked engineering findings, not a new algorithm. "
-        "V1: a modular OCR pipeline's detector failed differently depending on the "
-        "script it was extended to (a grouping bug for English, under-sized boxes "
-        "for Tamil, no boxes at all for Hindi). V2: one PaddleOCR engine per language "
-        "removed those detection failures, but on real third-party handwriting the "
-        "engines still make many errors, notably Latin-letter 'script leakage' by the "
-        "stock Tamil engine. Fine-tuning only the sequence head of the Tamil recogniser on "
-        "isolated handwritten Tamil words cut Tamil CER from 71.1% to 13.9% on the original "
-        "evaluation images and removed the leakage, and a small learned classifier then chose "
-        "the script far better than the hand-written rule. A clean synthetic pilot had made "
-        "accuracy look far better than it is on real data."
+        "This project produced linked engineering and evaluation findings, not a new OCR algorithm. "
+        "One PaddleOCR engine per language reads English, Tamil and Hindi. On real handwriting the stock Tamil and Hindi "
+        "engines make many errors, and the stock Tamil engine often answers in Latin letters. Fine-tuning only the sequence head of "
+        "each recogniser on isolated handwritten words (a CPU-only recipe) cut Tamil CER from 73.5% to 16.4% and Hindi CER from "
+        "41.9% to 16.1% on 200 fresh words each, but the words come from one dataset family, so this shows adaptation to that "
+        "handwriting source, not general Tamil or Hindi OCR. A small learned classifier over the three engines' output statistics "
+        "chooses the script far better than a hand-written rule (93.2% vs 55.5% on 600 fresh images with the adapted engines), "
+        "and the adapted engines changed the engines' behaviour enough that the classifier had to be refitted for them."
     ),
+    "tiles": [
+        {"value": "93.2%", "label": "script identification on 600 fresh images (95% CI 91.0-95.0)"},
+        {"value": "16.4%", "label": "Tamil character error rate after adaptation (stock 73.5%), 200 words"},
+        {"value": "16.1%", "label": "Hindi character error rate after adaptation (stock 41.9%), 200 words"},
+        {"value": "56/60", "label": "lines of synthetic mixed pages given the right script (rule: 34/60)"},
+    ],
     "v1_gradient": [
         {
             "script": "English",
@@ -98,36 +101,66 @@ RESEARCH_FINDINGS = {
         },
     ],
     "v2_real_data": [
-        {"script": "English", "dataset": "Teklia/IAM-line", "unit": "sentence line", "mean_len": 60.9, "n": 30, "cer": 0.241, "exact_match": "0/30", "synthetic_cer": None},
-        {"script": "Hindi", "dataset": "IIIT-INDIC-HW-WORDS-Hindi", "unit": "word", "mean_len": 6.4, "n": 30, "cer": 0.477, "exact_match": "2/30", "synthetic_cer": 0.071},
-        {"script": "Tamil", "dataset": "IIIT-INDIC-HW-WORDS-Tamil", "unit": "word", "mean_len": 9.6, "n": 30, "cer": 0.139, "exact_match": "13/30", "synthetic_cer": 0.259, "stock_cer": 0.711, "note": "fine-tuned Tamil head"},
+        {"script": "English", "dataset": "Teklia/IAM-line (test rows 110-309)", "unit": "sentence line", "n": 200, "cer": 0.1402, "exact_match": "7/200", "synthetic_cer": None},
+        {"script": "Hindi", "dataset": "IIIT-INDIC-HW-WORDS-Hindi (rows 1100-1299)", "unit": "word", "n": 200, "cer": 0.161, "exact_match": "96/200", "synthetic_cer": 0.071, "stock_cer": 0.4191, "note": "head-adapted Hindi recogniser"},
+        {"script": "Tamil", "dataset": "IIIT-INDIC-HW-WORDS-Tamil (rows 7100-7299)", "unit": "word", "n": 200, "cer": 0.164, "exact_match": "97/200", "synthetic_cer": 0.259, "stock_cer": 0.7353, "note": "head-adapted Tamil recogniser"},
     ],
-    "leakage_after_finetune": "0/30 Tamil predictions contained Latin letters after fine-tuning (17/30 before); 0/40 on fresh images (25/40 before).",
+    "leakage_after_finetune": "After head adaptation 0/200 Tamil and 0/200 Hindi predictions contained Latin letters on the 600-image test set (stock: 107/200 Tamil, 20/200 Hindi).",
     "leakage": [
         {"script": "Tamil", "with_latin": "17/30", "cer_with": 0.912, "cer_without": 0.461},
         {"script": "Hindi", "with_latin": "2/30", "cer_with": 1.167, "cer_without": 0.455},
     ],
     "script_id": {
         "rows": [
-            {"split": "Fresh images (never examined; clean test)", "n": 120, "accuracy": 0.933, "per_script": "English 36/40 / Tamil 38/40 / Hindi 38/40"},
-            {"split": "Cross-validation on the earlier 150 images", "n": 150, "accuracy": 0.897, "per_script": "English 45.7/50 / Tamil 45.5/50 / Hindi 43.3/50 (mean over 10 repeats)"},
-            {"split": "Mixed pages, each line scored (20 stitched pages)", "n": 60, "accuracy": 0.983, "per_script": "59/60 lines; 19/20 pages fully correct"},
+            {"split": "Large test set: 600 fresh images, adapted engines", "n": 600, "accuracy": 0.9317, "per_script": "English 196/200 / Tamil 179/200 / Hindi 184/200 (95% CI 91.0-95.0; rule 55.5%, argmax 83.3%)"},
+            {"split": "Large test set: 600 fresh images, stock engines (stock weights)", "n": 600, "accuracy": 0.91, "per_script": "English 198/200 / Tamil 166/200 / Hindi 182/200 (rule 77.2%, argmax 66.8%)"},
+            {"split": "Earlier fresh set: 120 images, adapted engines", "n": 120, "accuracy": 0.875, "per_script": "English 34/40 / Tamil 34/40 / Hindi 37/40 (a cluster of English lines is misrouted to Hindi)"},
+            {"split": "Cross-validation on the 550 fitting images", "n": 550, "accuracy": 0.9018, "per_script": "English 232/250 / Tamil 128.4/150 / Hindi 135.6/150 (mean over 10 repeats)"},
+            {"split": "Mixed pages, each line scored (20 stitched pages)", "n": 60, "accuracy": 0.9333, "per_script": "56/60 lines; 16/20 pages fully correct (rule: 34/60)"},
+            {"split": "Short handwritten English words (IAM words)", "n": 60, "accuracy": 0.8333, "per_script": "50/60; 58.3% before 100 short training words were added to the fitting set, and equal to argmax (50/60)"},
+            {"split": "Printed words (Mozhi Tamil and Hindi)", "n": 100, "accuracy": 0.82, "per_script": "Tamil 47/50 / Hindi 35/50 (domain shift: fitted on handwriting)"},
         ],
-        "note": "Calibrated classifier (small logistic regression on the three engines' output statistics). On the stock Tamil model the same classifier scored 93.3% on the fresh images (Tamil 36/40) while the earlier hand-written rule scored 74.2%; with the fine-tuned Tamil model the hand-written rule fails (51/120) because that engine reads other scripts as Tamil, so the classifier is required. English is scored on sentence lines and Tamil/Hindi on isolated words, which may make English easier to separate than it would be for short English words.",
+        "note": "Calibrated classifier (small logistic regression on the three engines' output statistics) paired with the engine set it was fitted on. With the adapted Tamil and Hindi engines the earlier hand-written rule fails (it labels almost every English image as Tamil or Hindi) because those engines read other scripts as their own, so the classifier is required. Tesseract's script detection answered on only 57 of 600 images, so it is not a usable baseline for word crops. English is scored on lines in the large set and on short words in a separate set; the selector's lead over argmax disappears on short English words.",
     },
+    "comparisons": [
+        {
+            "title": "Comparison with other open-source OCR (character error rate, 200 fresh handwriting images per script)",
+            "headers": ["System", "English lines", "Hindi words", "Tamil words"],
+            "rows": [
+                ["This project, adapted recognisers", "14.0%", "16.1%", "16.4%"],
+                ["This project, stock recognisers", "14.0%", "41.9%", "73.5%"],
+                ["EasyOCR 1.7.2 (hi+en reader; Tamil model fails to load)", "57.3%", "68.3%", "n/a"],
+                ["Tesseract 5.4 (eng / hin / tam, one line per image)", "40.9%", "83.2%", "85.2%"],
+            ],
+            "note": "The true script is given to every system, so this compares recognition only. Default settings, no tuning of the competitors; the adapted recognisers were trained on handwriting from the same dataset family as the Hindi and Tamil test words.",
+        },
+        {
+            "title": "Printed words (Mozhi test set, 50 random words per script)",
+            "headers": ["System", "Hindi CER", "Tamil CER"],
+            "rows": [
+                ["This project, adapted recognisers", "35.2%", "7.6%"],
+                ["This project, stock recognisers", "53.8%", "34.6%"],
+                ["EasyOCR 1.7.2", "46.2%", "n/a"],
+                ["Tesseract 5.4", "37.2%", "28.9%"],
+            ],
+            "note": "Printed words are a different domain from the handwriting the adapted recognisers were trained on. On Hindi the intervals overlap widely (n=50), so no ranking is claimed.",
+        },
+    ],
     "vendor_benchmarks": {
         "english": {"value": 0.8525, "model": "en_PP-OCRv5_mobile_rec (this project's English pipeline uses PP-OCRv6, so this is NOT the model in use)"},
         "tamil": {"value": 0.942, "model": "ta_PP-OCRv5_mobile_rec"},
         "hindi": {"value": 0.8496, "model": "devanagari_PP-OCRv5_mobile_rec"},
     },
     "caveats": [
-        "The three CERs are NOT comparable across languages: English is scored on ~61-character sentence lines, Tamil/Hindi on 6-10-character isolated words, from different datasets and writers. No claim about which script is harder is supported.",
-        "The Tamil fine-tuning used 6,000 words from the same dataset as the evaluation images (different rows, probably some of the same writers), so the Tamil gain shows adaptation to that handwriting source, not generalization to all Tamil handwriting. English and Hindi are unchanged.",
-        "n=30 per language, first rows of each dataset (not random); no confidence intervals. CER counts Unicode code points, which penalizes Tamil/Devanagari more than a grapheme-level metric would.",
-        "The synthetic-vs-real comparison mixes an engine change (V1 -> V2) with a data change; it supports a caution about clean synthetic pilots, not a clean estimate of a synthetic-to-real gap.",
+        "The three CERs are NOT comparable across languages: English is scored on sentence lines and Tamil/Hindi on isolated words, from different datasets and writers. No claim about which script is harder is supported.",
+        "The Tamil and Hindi gains come from one dataset family (IIIT-INDIC-HW-WORDS). Test rows differ from training rows but may share writers; the datasets give no writer IDs. No independent Tamil or Hindi handwriting set was found, so generalisation is NOT shown.",
+        "The selector was refitted for the adapted engines, then once more after short English words were added when it failed on them (58.3% -> 83.3%); the 600-image set, the 120-image set and the English words were all seen before that last change, so those numbers are not a clean one-shot estimate.",
+        "The mixed pages are synthetic (one script per stitched line). A small set of real Wikimedia Commons photos was labelled by script presence only, by visual inspection, not by a Tamil or Hindi reader.",
+        "n is 40-200 per script, intervals are bootstrap over images, there is a single training run per language, and CER counts Unicode code points, which penalises Tamil and Devanagari more than a grapheme-level metric would.",
+        "Competitors were run with default settings and one text line per image; EasyOCR's Tamil model could not be loaded, and Tesseract's script detection failed on most word crops.",
         "Vendor benchmark figures were measured by PaddleOCR on its own test sets with specific PP-OCRv5 mobile models; they are context, not a comparison point.",
         "V1 was never run on the real datasets, so V2 is not claimed to be more accurate than V1 on the same data.",
-        "A patent claim was investigated and dropped (see docs/patent_ip_assessment.md). Script identification is an established problem; this implementation is a usability feature, not a novelty claim.",
+        "A patent claim was investigated and dropped. Script identification is an established problem; this implementation is a usability feature, not a novelty claim.",
     ],
 }
 
