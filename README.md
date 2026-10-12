@@ -960,6 +960,21 @@ Reading the comparison: on handwriting the adapted recognisers are far ahead of 
 **Printed words** (Mozhi test set, 50 random Tamil and 50 random Hindi words, seed 0; the handwriting-trained weights are applied to a different domain): selector accuracy 82.0% [74.0, 89.0] with adapted engines (Tamil 47/50, Hindi 35/50) and 69.0% [60.0, 78.0] with stock engines, against 58.0% [49.0, 68.0] for Tesseract's multi-language output. CER with the adapted recognisers: Tamil 7.6% [4.7, 10.9] (stock 34.6%, Tesseract 28.9%), Hindi 35.2% [23.7, 49.0] (stock 53.8%, EasyOCR 46.2%, Tesseract 37.2%). The stock Hindi engine returned an empty output for 27 of the 50 printed Hindi words (cause not investigated).
 
 
+### 10.15 Real mixed-script photographs (Wikimedia Commons)
+
+61 photographs of signboards, plaques and banknotes downloaded from Wikimedia Commons categories for bilingual and trilingual signs in India (`experiments/fresh/pull_mixed_real.py`; 65 downloaded, 4 rejected as unreadable, wrong script or unconfirmed). Labels are **per-image script presence** (English 61, Tamil 39, Hindi 36 of 61 images), written by visual inspection of every image, not by a Tamil or Hindi reader, and not per line (no pixel annotation was made); the absent-script labels are the weaker ones (small logos or fine print can contain another script). A script counts as present when at least 3 characters of that script are read, for every system. Licences and authors: `experiments/mixed_real/sources.csv`.
+
+| System | English precision / recall | Tamil precision / recall | Hindi precision / recall | Exact script set recovered [95% CI] |
+|---|---|---|---|---|
+| This project, mixed mode (per-line script, ft2 weights) | 100% / 92% | 91% / 77% | 86% / 83% | 57.4% [44.3, 68.9] |
+| This project, one script per image (auto) | 100% / 69% | 100% / 26% | 100% / 25% | 0.0% [0.0, 0.0] |
+| EasyOCR 1.7.2 (hi+en reader; no Tamil) | 100% / 100% | n/a / 0% | 60% / 97% | 36.1% [24.6, 49.2] |
+| Tesseract 5.4, eng+tam+hin, --psm 7 (one line) | 100% / 8% | n/a / 0% | 50% / 3% | 0.0% [0.0, 0.0] |
+| Tesseract 5.4, eng+tam+hin, --psm 11 (sparse text) | 100% / 100% | 64% / 100% | 60% / 81% | 27.9% [16.4, 39.3] |
+
+Reading the table: mixed mode is the only system with both high precision and useful recall, and it recovers the exact script set of 57.4% of the photos (a single script per image can never do so on mixed signs). EasyOCR and Tesseract read the text on these photos but report scripts that are not there: EasyOCR (no Tamil model) reports Hindi in 23 images that have none, and Tesseract in sparse-text mode reports Tamil in 22 and Hindi in 19 images that have none, so their exact-set rates are lower; Tesseract with one-line segmentation (`--psm 7`) is a poor fit for scene photos and is shown only for completeness. Caveats: small n (61 photographs, several from the same locations), presence labels from visual inspection, a fixed 3-character threshold, default competitor settings, and no per-line accuracy on real photographs, so the mixed-page line accuracy of Section 10.12 remains a synthetic result.
+
+
 ---
 
 ## 11. Analysis and discussion

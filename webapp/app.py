@@ -145,6 +145,18 @@ RESEARCH_FINDINGS = {
             ],
             "note": "Printed words are a different domain from the handwriting the adapted recognisers were trained on. On Hindi the intervals overlap widely (n=50), so no ranking is claimed.",
         },
+        {
+            "title": "Real mixed-script photographs (61 Wikimedia Commons signs; precision / recall of script presence)",
+            "headers": ["System", "English", "Tamil", "Hindi", "Exact script set"],
+            "rows": [
+                ["This project, mixed mode (per-line script, ft2 weights)", "100% / 92%", "91% / 77%", "86% / 83%", "57.4% [44.3, 68.9]"],
+                ["This project, one script per image (auto)", "100% / 69%", "100% / 26%", "100% / 25%", "0.0% [0.0, 0.0]"],
+                ["EasyOCR 1.7.2 (hi+en reader; no Tamil)", "100% / 100%", "n/a / 0%", "60% / 97%", "36.1% [24.6, 49.2]"],
+                ["Tesseract 5.4, eng+tam+hin, --psm 7 (one line)", "100% / 8%", "n/a / 0%", "50% / 3%", "0.0% [0.0, 0.0]"],
+                ["Tesseract 5.4, eng+tam+hin, --psm 11 (sparse text)", "100% / 100%", "64% / 100%", "60% / 81%", "27.9% [16.4, 39.3]"]
+            ],
+            "note": "Labels are per-image script presence from visual inspection, not per line; a script counts when at least 3 of its characters are read. Competitors report scripts that are not present, which lowers their exact-set rate. Small n; several photos share locations.",
+        },
     ],
     "vendor_benchmarks": {
         "english": {"value": 0.8525, "model": "en_PP-OCRv5_mobile_rec (this project's English pipeline uses PP-OCRv6, so this is NOT the model in use)"},
