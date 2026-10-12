@@ -20,6 +20,7 @@ FEATURE_NAMES = [f"{s}_{f}" for s in SCRIPTS for f in ("conf", "own_frac", "lati
 _HERE = os.path.dirname(os.path.abspath(__file__))
 WEIGHTS_PATH = os.path.join(_HERE, "script_classifier_weights.json")  # original Tamil model
 WEIGHTS_PATH_FT = os.path.join(_HERE, "script_classifier_weights_ft.json")  # fine-tuned Tamil model
+WEIGHTS_PATH_FT2 = os.path.join(_HERE, "script_classifier_weights_ft2.json")  # fine-tuned Tamil and Hindi models
 
 
 def _is_latin(ch):
@@ -72,10 +73,10 @@ _DEFAULT = {}
 
 
 def load_default(variant="base"):
-    """variant 'base' = weights for the stock Tamil model, 'ft' = for the fine-tuned Tamil model.
-    The two differ because the engines' output statistics differ; use the matching one."""
+    """variant 'base' = weights for the stock models, 'ft' = fine-tuned Tamil model, 'ft2' = fine-tuned Tamil and Hindi.
+    They differ because the engines' output statistics differ; use the matching one."""
     if variant not in _DEFAULT:
-        path = WEIGHTS_PATH_FT if variant == "ft" else WEIGHTS_PATH
+        path = {"ft": WEIGHTS_PATH_FT, "ft2": WEIGHTS_PATH_FT2}.get(variant, WEIGHTS_PATH)
         _DEFAULT[variant] = ScriptClassifier.load(path) if os.path.exists(path) else None
     return _DEFAULT[variant]
 

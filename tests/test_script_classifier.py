@@ -48,3 +48,11 @@ def test_shipped_weights_match_feature_set():
     d = json.load(open(sc.WEIGHTS_PATH, encoding="utf-8"))
     assert d["features"] == sc.FEATURE_NAMES and d["classes"] == list(sc.SCRIPTS)
     ScriptClassifier.load()
+
+
+@pytest.mark.parametrize("variant,path", [("base", sc.WEIGHTS_PATH), ("ft", sc.WEIGHTS_PATH_FT), ("ft2", sc.WEIGHTS_PATH_FT2)])
+def test_every_weight_variant_loads_and_resolves_to_its_file(variant, path):
+    d = json.load(open(path, encoding="utf-8"))
+    assert d["features"] == sc.FEATURE_NAMES and d["classes"] == list(sc.SCRIPTS)
+    sc._DEFAULT.pop(variant, None)
+    assert sc.load_default(variant) is not None

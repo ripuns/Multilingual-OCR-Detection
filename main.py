@@ -82,7 +82,7 @@ def warm_up(config=None):
 def _selector(name):
     """Returns pick_script-compatible callable: 'calibrated' (learned weights, falls back to the
     rule when no weights are installed) or 'rule' (glyph-mass argmax with Indic override)."""
-    variant = "ft" if _REC_MODEL_DIRS.get("tamil") else "base"
+    variant = "ft2" if _REC_MODEL_DIRS.get("tamil") and _REC_MODEL_DIRS.get("hindi") else "ft" if _REC_MODEL_DIRS.get("tamil") else "base"
     if name == "calibrated" and load_default(variant) is not None:
         return lambda by_script: pick_script_calibrated(by_script, variant=variant)
     return pick_script

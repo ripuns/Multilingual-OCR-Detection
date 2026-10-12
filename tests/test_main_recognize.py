@@ -111,3 +111,19 @@ def test_calibrated_selector_variant_follows_the_tamil_model(monkeypatch, tmp_pa
     monkeypatch.setattr(main, "_REC_MODEL_DIRS", {"tamil": str(tmp_path)})
     main._selector("calibrated")
     assert used == ["base", "ft"]
+
+
+def test_calibrated_selector_uses_ft2_weights_when_tamil_and_hindi_models_are_adapted(monkeypatch, tmp_path):
+    used = []
+    monkeypatch.setattr(main, "load_default", lambda variant="base": used.append(variant) or object())
+    monkeypatch.setattr(main, "_REC_MODEL_DIRS", {"tamil": str(tmp_path), "hindi": str(tmp_path)})
+    main._selector("calibrated")
+    monkeypatch.setattr(main, "_REC_MODEL_DIRS", {"hindi": str(tmp_path)})
+    main._selector("calibrated")
+    assert used == ["ft2", "base"]
+
+
+def test_configure_models_registers_both_adapted_recognisers(monkeypatch, tmp_path):
+    monkeypatch.setattr(main, "_REC_MODEL_DIRS", {})
+    main.configure_models({"models": {"tamil": str(tmp_path), "hindi": str(tmp_path)}})
+    assert main._REC_MODEL_DIRS == {"tamil": str(tmp_path), "hindi": str(tmp_path)}

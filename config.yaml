@@ -3,6 +3,7 @@ selector: calibrated    # calibrated (learned) | rule (glyph-mass argmax + Indic
 suppress_leakage: true  # withhold Latin garbage from the Tamil/Hindi engines
 models:
   tamil: models/ta_PP-OCRv5_mobile_rec_ft   # fine-tuned Tamil recogniser; remove to use the stock model
+  hindi: models/devanagari_PP-OCRv5_mobile_rec_ft   # fine-tuned Hindi recogniser; remove to use the stock model
 
 paths:
   input: input/images/sample.png
