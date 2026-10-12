@@ -987,6 +987,32 @@ Reading the comparison: on handwriting the adapted recognisers are far ahead of 
 Reading the table: mixed mode is the only system with both high precision and useful recall, and it recovers the exact script set of 57.4% of the photos (a single script per image can never do so on mixed signs). EasyOCR and Tesseract read the text on these photos but report scripts that are not there: EasyOCR (no Tamil model) reports Hindi in 23 images that have none, and Tesseract in sparse-text mode reports Tamil in 22 and Hindi in 19 images that have none, so their exact-set rates are lower; Tesseract with one-line segmentation (`--psm 7`) is a poor fit for scene photos and is shown only for completeness. Caveats: small n (61 photographs, several from the same locations), presence labels from visual inspection, a fixed 3-character threshold, default competitor settings, and no per-line accuracy on real photographs, so the mixed-page line accuracy of Section 10.12 remains a synthetic result.
 
 
+### 10.16 Supplementary numbers (confusion matrices, row ranges, calibration, references)
+
+**Confusion matrix on the 600 fresh images** (calibrated selector; rows = true script, columns = chosen script; "none" = every engine returned nothing, so no script could be chosen):
+
+| Adapted engines (ft2 weights) | English | Tamil | Hindi | none |
+|---|---|---|---|---|
+| English (200) | **196** | 2 | 2 | 0 |
+| Tamil (200) | 3 | **179** | 6 | 12 |
+| Hindi (200) | 5 | 10 | **184** | 1 |
+
+| Stock engines (stock weights) | English | Tamil | Hindi | none |
+|---|---|---|---|---|
+| English (200) | **198** | 2 | 0 | 0 |
+| Tamil (200) | 14 | **166** | 17 | 3 |
+| Hindi (200) | 4 | 13 | **182** | 1 |
+
+**Row ranges.** The 300 extra fitting images ("Fit-2"): English = Teklia/IAM-line **train** split rows 0-99, Hindi = IIIT-INDIC-HW-WORDS-Hindi train rows 1300-1399, Tamil = IIIT-INDIC-HW-WORDS-Tamil train rows 7300-7399. The 100 short English training words: `priyank-m/IAM_words_text_recognition` **train** split rows 0-99 (the 60 test words are the first 60 rows of its **test** split). Hindi rows 1300-1399 were used only as selector fitting images; they are not part of the Hindi recogniser's fine-tuning (rows 2000-7999), validation (rows 500-799) or any test set (rows 0-49, 1000-1059, 1100-1299).
+
+**Calibration of the final selector** (ft2 weights, 550 fitting images, 10 repeats of stratified 5-fold cross-validation): accuracy 90.2% (sd 0.4), log loss 0.284, **Brier score 0.143**, expected calibration error 0.014. (Earlier fits: 150 images with stock engines, Brier 0.143, ECE 0.028; with the Tamil-adapted engine, Brier 0.178, ECE 0.041; the 450-image ft2 fit, Brier 0.106, ECE 0.008, was superseded.)
+
+**Printed words (Mozhi, 50 Tamil + 50 Hindi), script accuracy of every selector:** stock engines: argmax 51.0% [41.0, 61.0], rule 57.0% [47.0, 67.0], calibrated 69.0% [60.0, 78.0]; adapted engines: argmax 66.0% [57.0, 75.0], rule 68.0% [59.0, 77.0], calibrated 82.0% [74.0, 89.0].
+
+**Leakage suppression on the 40 fresh Tamil and 40 fresh Hindi words** (stock engines, threshold 0.7; counts of regions): Tamil 20 of 47 regions withheld (CER 83.9% -> 82.6%); Hindi 1 of 42 regions withheld (CER 42.6% -> 41.8%). With the adapted recognisers nothing is withheld because no output contains Latin letters.
+
+**References for the data** (verify before submission): Mozhi = Mathew, Mondal and Jawahar, "Towards Deployable OCR models for Indic languages", arXiv:2205.06740, submitted 13 May 2022 (v2 18 December 2024), presented at ICPR 2024 per the arXiv comments; dataset page `https://cvit.iiit.ac.in/usodi/tdocrmil.php`. IAM database = Marti and Bunke, "The IAM-database: an English sentence database for offline handwriting recognition", International Journal on Document Analysis and Recognition 5(1), 2002 (from memory, not re-checked); the Hugging Face copy `priyank-m/IAM_words_text_recognition` was created on 7 September 2022, states no licence, and the IAM terms (non-commercial research) apply. IIIT-INDIC-HW-WORDS = Gongidi and Jawahar, ICDAR 2021.
+
 ---
 
 ## 11. Analysis and discussion
