@@ -298,7 +298,19 @@ statistics, and the `rule` selector fails with the adapted models (they read oth
 
 Single file (`webapp/static/index.html`), no build step, no external fonts/scripts (works
 offline), responsive down to ~390 px, light and dark themes (system default, saved in
-`localStorage` when available). Screenshots: `docs/figures/` (local) — see Section 17.1.
+`localStorage` when available). Screenshots below are committed in `webapp/screenshots/` (real models, October 2026 design); more are in `docs/figures/` (local) — see Section 17.1.
+
+| Home | Auto-detected English page |
+|---|---|
+| ![Home](webapp/screenshots/home.png) | ![English result](webapp/screenshots/result-english-auto.png) |
+
+| Tamil word (auto, with probability strip) | Dark theme |
+|---|---|
+| ![Tamil result](webapp/screenshots/result-tamil-auto.png) | ![Dark result](webapp/screenshots/result-dark.png) |
+
+| Research tab | Phone width |
+|---|---|
+| ![Research tab](webapp/screenshots/research-tab.png) | ![Mobile](webapp/screenshots/mobile.png) |
 
 - **Top bar:** brand, two tabs (Recognize, Research & accuracy), a server-status pill fed by
   `/api/health` polling ("Loading language models…" until all three are warm, then "Models ready",
