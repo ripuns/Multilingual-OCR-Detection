@@ -10,13 +10,13 @@ recognizer construction/validation, and the script-identification scoring rule.
 
 ## How
 ```
-pytest tests/ legacy_v1/tests/ -q        # expected: 60 passed (no model downloads, no network)
+pytest tests/ legacy_v1/tests/ -q        # expected: 65 passed (no model downloads, no network)
 ```
 
 No test loads PaddleOCR or EAST. Model-dependent behavior is checked by the evaluation
 scripts in `experiments/runs/` and by live requests against the web app.
 
-## Structure (production, 20 tests)
+## Structure (production, 44 tests)
 - `test_registry.py` (4) — register/lookup, missing-route `KeyError`, all three scripts
   registered when `recognition.paddle_recognizer` is imported, and the exact engine labels
   (`PaddleOCR PP-OCRv6 (en)`, `PaddleOCR PP-OCRv5 (ta)`, `PaddleOCR PP-OCRv5 (hi)`).

@@ -41,7 +41,9 @@ script identifier so users need not pick a language.
 ## Structure
 - `registry.py`
 - `paddle_recognizer.py` — registers the three routes as an import-time side effect.
-- `script_detector.py`
+- `script_detector.py` — rule-based selector (fallback)
+- `script_classifier.py` + `script_classifier_weights{,_ft,_ft2}.json` — calibrated selector
+- `region_merge.py`, `leakage.py` — mixed-page merge and Latin-leak suppression
 
 ## Summary
 `main.py` calls `PaddleOcrRecognizer.detect_and_recognize` for one engine (manual mode) or

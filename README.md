@@ -54,7 +54,7 @@ one (V2) is reproducible.
 | Script identification accuracy | **93.2% on 600 fresh images** (95% CI 91.0-95.0; English 196/200, Tamil 179/200, Hindi 184/200) with the calibrated classifier fitted for the adapted engines, against 55.5% for the earlier hand-written rule and 83.3% for taking the engine with the most in-script text; 91.0% with stock engines and stock weights; 83.3% on 60 short English words; 56/60 lines of synthetic mixed pages. See Sections 10.5 and 10.9-10.14 |
 | Tests | 65 passing (44 production + 21 legacy), no models/network needed; plus the Playwright UI test (38 checks) |
 | Language / platform | Python 3.11.4, Windows 11 (developed and measured on AMD Ryzen 5 5625U, 15.3 GB RAM, no GPU) |
-| Codebase size | ~190 lines `main.py`, ~110 `paddle_recognizer.py`, ~50 `script_detector.py`, ~100 `script_classifier.py`, ~60 `region_merge.py`, ~30 `leakage.py`, ~215 `webapp/app.py`, ~990 `webapp/static/index.html` |
+| Codebase size | ~190 lines `main.py`, ~110 `paddle_recognizer.py`, ~50 `script_detector.py`, ~100 `script_classifier.py`, ~60 `region_merge.py`, ~30 `leakage.py`, ~250 `webapp/app.py`, ~990 `webapp/static/index.html` |
 | Previous architecture | `legacy_v1/` (EAST + grouping + classifier + TrOCR / ocr_tamil / EasyOCR), preserved, runnable, tested |
 | Author | Ripun, IT Engineering, VIT Vellore |
 
